@@ -22,7 +22,7 @@
 #include "qgs3drendererregistry.h"
 #include "qgsabstract3drenderer.h"
 #include "qgsmaplayerref.h"
-
+//#include "qgspointcloud3dsymbol.h"
 #include <QObject>
 
 class QgsPointCloudLayer;
