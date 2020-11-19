@@ -23,7 +23,7 @@
 #include "qgis_sip.h"
 #include "raster\qgscontrastenhancement.h"
 
-class QgsContrastEnhancement;
+#include "qgscontrastenhancement.h"
 
 /**
  * \ingroup core

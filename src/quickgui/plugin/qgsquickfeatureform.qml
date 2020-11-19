@@ -92,8 +92,19 @@ Item {
      * \param widget valuerelation widget for specific field to send valueChanged signal.
      * \param valueRelationModel model of type FeaturesListModel bears features of related layer.
      */
-    property var valueRelationOpened: function valueRelationOpened( widget, valueRelationModel ) {
-      widget.openCombobox() // by default just open combobox
+    property var valueRelationOpened: function valueRelationOpened( widget, valueRelationModel ) {}
+
+    /**
+     * Called when field for value relation is created, by default it returns value "combobox".
+     * Return value of this function sets corresponding widget type. Currently accepted values are:
+     *    - combobox -> QML combobox component.
+     *    - textfield -> custom text widget that shows only title of selected feature in value relation
+     *                   and calls function "valueRelationOpened" when it is clicked.
+     * \param widget valuerelation widget for specific field to send valueChanged signal.
+     * \param valueRelationModel model of type FeaturesListModel bears features of related layer.
+     */
+    property var getTypeOfWidget: function getTypeOfWidget( widget, valueRelationModel ) {
+      return "combobox"
     }
   }
 
@@ -349,7 +360,7 @@ Item {
             model: QgsQuick.SubModel {
               id: contentModel
               model: form.model
-              rootIndex: form.model.hasTabs ? form.model.index(currentIndex, 0) : null
+              rootIndex: form.model.hasTabs ? form.model.index(currentIndex, 0) : undefined
             }
 
             delegate: fieldItem
@@ -410,6 +421,8 @@ Item {
           height: childrenRect.height
           anchors { left: parent.left; right: parent.right }
 
+          signal dataHasChanged() // to propagate signal to valuerelation model from model
+
           property var value: AttributeValue
           property var config: EditorWidgetConfig
           property var widget: EditorWidget
@@ -439,6 +452,16 @@ Item {
           target: attributeEditorLoader.item
           onValueChanged: {
             AttributeValue = isNull ? undefined : value
+          }
+        }
+
+        Connections {
+          target: form.model
+          onDataChanged: {
+            if ( attributeEditorLoader.item && attributeEditorLoader.item.dataUpdated )
+            {
+              attributeEditorLoader.item.dataUpdated( form.model.attributeModel.featureLayerPair.feature )
+            }
           }
         }
 
