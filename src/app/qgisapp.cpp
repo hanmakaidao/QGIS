@@ -12771,7 +12771,7 @@ void QgisApp::helpQgisHomePage()
                                  QStringLiteral( "https://qgis.org" ) ).toString();
   openURL( helpQgisHomePageUrl, false );
 }
-
+#include "shellapi.h"
 void QgisApp::openURL( QString url, bool useQgisDocDirectory )
 {
   // open help in user browser
