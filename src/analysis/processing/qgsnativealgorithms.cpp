@@ -205,8 +205,6 @@
 #include "qgsprojectstylealgorithms.h"
 #include "qgsstylealgorithms.h"
 
-#include "qgsalgorithmsbetpointcloud.h"
-
 ///@cond PRIVATE
 
 QgsNativeAlgorithms::QgsNativeAlgorithms( QObject *parent )
@@ -470,8 +468,6 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsPolygonsToLinesAlgorithm() );
   addAlgorithm( new QgsDensifyGeometriesByIntervalAlgorithm() );
   addAlgorithm( new QgsDensifyGeometriesByCountAlgorithm() );
-  addAlgorithm(new  QgsPointCloudGeoRefWithSbetAlgorithm());
-  addAlgorithm(new QgsPointCloudIcpFilterAlgorithm());
 }
 
 ///@endcond

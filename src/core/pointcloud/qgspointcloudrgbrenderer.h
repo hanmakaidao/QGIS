@@ -21,7 +21,6 @@
 #include "qgspointcloudrenderer.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "raster\qgscontrastenhancement.h"
 
 #include "qgscontrastenhancement.h"
 
