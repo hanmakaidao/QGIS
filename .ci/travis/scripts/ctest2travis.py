@@ -22,7 +22,7 @@ __author__ = 'Matthias Kuhn'
 __date__ = 'March 2017'
 __copyright__ = '(C) 2017, Matthias Kuhn'
 # This will get replaced with a git SHA1 when you do a git archive
-__revision__ = '$Format:%H$'
+__revision__ = 'ceb53cefa430be672028f888a7d0d97d69c62728'
 
 # This script parses output from ctest and injects
 #

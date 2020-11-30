@@ -31,15 +31,6 @@
 #include "qgsmaplayer.h"
 #include "qgspointcloudlayer.h"
 
-
-#include <windows.h>
-#include <io.h>
-
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <list>
-#include <memory>
 /**
  * \ingroup UnitTests
  * This is a unit test for the PDAL provider
@@ -53,14 +44,13 @@ class TestQgsPdalProvider : public QObject
     void cleanupTestCase();// will be called after the last testfunction was executed.
     void init() {}// will be called before each testfunction is executed.
     void cleanup() {}// will be called after every testfunction.
-	/*
+
     void filters();
     void encodeUri();
     void decodeUri();
     void layerTypesForUri();
     void preferredUri();
     void brokenPath();
-	*/
     void validLayer();
 
   private:
@@ -71,7 +61,7 @@ class TestQgsPdalProvider : public QObject
 //runs before all tests
 void TestQgsPdalProvider::initTestCase()
 {
- 
+  // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
 
@@ -92,7 +82,7 @@ void TestQgsPdalProvider::cleanupTestCase()
     myFile.close();
   }
 }
-/*
+
 void TestQgsPdalProvider::filters()
 {
   QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "pdal" ) );
@@ -169,7 +159,6 @@ void TestQgsPdalProvider::brokenPath()
   std::unique_ptr< QgsPointCloudLayer > layer = qgis::make_unique< QgsPointCloudLayer >( QStringLiteral( "not valid" ), QStringLiteral( "layer" ), QStringLiteral( "pdal" ) );
   QVERIFY( !layer->isValid() );
 }
-*/
 
 void TestQgsPdalProvider::validLayer()
 {

@@ -1,18 +1,33 @@
-########################################################
-# Files
+#############################################################
+# CMake settings
+cmake_minimum_required(VERSION 3.10.0)
+set(CMAKE_COLOR_MAKEFILE ON)
+set(CMAKE_AUTORCC ON)
+# set path to additional CMake modules
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+# POLICIES
+cmake_policy (SET CMP0048 NEW)
+cmake_policy (SET CMP0053 NEW)
+cmake_policy (SET CMP0071 NEW)
 
+# don't relink it only the shared object changes
+set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 
-########################################################
-# Build
+#############################################################
+# Project and version
+set(CPACK_PACKAGE_VERSION_MAJOR "3")
+set(CPACK_PACKAGE_VERSION_MINOR "17")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
+set(RELEASE_NAME "Master")
+project(qgis VERSION ${COMPLETE_VERSION})
 
+if (APPLE)
+  set(QGIS_APP_NAME "QGIS")
+else()
+  set(QGIS_APP_NAME "qgis")
+endif()
 
-<<<<<<< HEAD
-########################################################
-# Continue on to subdirs
-ADD_SUBDIRECTORY(icons)
-ADD_SUBDIRECTORY(themes)
-ADD_SUBDIRECTORY(svg)
-=======
 # Note the version no is Mmmpp for Major/minor/patch, 0-padded, thus '10100' for 1.1.0
 math(EXPR QGIS_VERSION_INT "${CPACK_PACKAGE_VERSION_MAJOR}*10000+${CPACK_PACKAGE_VERSION_MINOR}*100+${CPACK_PACKAGE_VERSION_PATCH}")
 message(STATUS "QGIS version: ${COMPLETE_VERSION} ${RELEASE_NAME} (${QGIS_VERSION_INT})")
@@ -1057,4 +1072,3 @@ endif()
 if (UNIX AND NOT APPLE)
   add_subdirectory(linux)
 endif()
->>>>>>> ceb53cefa430be672028f888a7d0d97d69c62728

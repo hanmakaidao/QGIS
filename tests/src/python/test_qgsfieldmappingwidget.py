@@ -11,7 +11,7 @@ __author__ = 'Alessandro Pasotti'
 __date__ = '16/03/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
-__revision__ = '$Format:%H$'
+__revision__ = 'ceb53cefa430be672028f888a7d0d97d69c62728'
 
 from qgis.core import (
     QgsFields,
