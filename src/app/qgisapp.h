@@ -620,11 +620,11 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QMenu *editMenu() { return mEditMenu; }
     QMenu *viewMenu() { return mViewMenu; }
     QMenu *layerMenu() { return mLayerMenu; }
-    QMenu *newLayerMenu() { return mNewLayerMenu; }
+    QMenu *newLayerMenu() { return mLayerMenu; }
     //! \since QGIS 2.5
-    QMenu *addLayerMenu() { return mAddLayerMenu; }
-    QMenu *settingsMenu() { return mSettingsMenu; }
-    QMenu *pluginMenu() { return mPluginMenu; }
+    QMenu *addLayerMenu() { return mLayerMenu; }
+    QMenu *settingsMenu() { return mHelpMenu; }
+    QMenu *pluginMenu() { return mMenuPluginHelp; }
     QMenu *pluginHelpMenu() { return mMenuPluginHelp; }
     QMenu *databaseMenu() { return mDatabaseMenu; }
     QMenu *rasterMenu() { return mRasterMenu; }
@@ -649,7 +649,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      */
     QToolBar *fileToolBar() { return mFileToolBar; }
     QToolBar *layerToolBar() { return mLayerToolBar; }
-    QToolBar *dataSourceManagerToolBar() { return mDataSourceManagerToolBar; }
+    QToolBar *dataSourceManagerToolBar() { return mLayerToolBar; }
     QToolBar *mapNavToolToolBar() { return mMapNavToolBar; }
     QToolBar *digitizeToolBar() { return mDigitizeToolBar; }
     QToolBar *advancedDigitizeToolBar() { return mAdvancedDigitizeToolBar; }
