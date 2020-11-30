@@ -1,11 +1,34 @@
-########################################################
-# Files
+#############################################################
+# CMake settings
+cmake_minimum_required(VERSION 3.10.0)
+set(CMAKE_COLOR_MAKEFILE ON)
+set(CMAKE_AUTORCC ON)
+# set path to additional CMake modules
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+# POLICIES
+cmake_policy (SET CMP0048 NEW)
+cmake_policy (SET CMP0053 NEW)
+cmake_policy (SET CMP0071 NEW)
 
+# don't relink it only the shared object changes
+set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 
-########################################################
-# Build
+#############################################################
+# Project and version
+set(CPACK_PACKAGE_VERSION_MAJOR "3")
+set(CPACK_PACKAGE_VERSION_MINOR "17")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
+set(RELEASE_NAME "Master")
+project(qgis VERSION ${COMPLETE_VERSION})
 
+if (APPLE)
+  set(QGIS_APP_NAME "QGIS")
+else()
+  set(QGIS_APP_NAME "qgis")
+endif()
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 ########################################################
 # Continue on to subdirs
@@ -13,6 +36,8 @@ ADD_SUBDIRECTORY(icons)
 ADD_SUBDIRECTORY(themes)
 ADD_SUBDIRECTORY(svg)
 =======
+=======
+>>>>>>> parent of e571f58808... wp
 # Note the version no is Mmmpp for Major/minor/patch, 0-padded, thus '10100' for 1.1.0
 math(EXPR QGIS_VERSION_INT "${CPACK_PACKAGE_VERSION_MAJOR}*10000+${CPACK_PACKAGE_VERSION_MINOR}*100+${CPACK_PACKAGE_VERSION_PATCH}")
 message(STATUS "QGIS version: ${COMPLETE_VERSION} ${RELEASE_NAME} (${QGIS_VERSION_INT})")
@@ -202,14 +227,21 @@ if(WITH_CORE)
   endif()
 
   # try to configure and build MDAL support
+<<<<<<< HEAD
   set (WITH_INTERNAL_MDAL TRUE CACHE BOOL "Determines whether MDAL should be built from internal copy")
+=======
+  set (WITH_INTERNAL_MDAL TRUE CACHE BOOL "Determines whether MDAL support should be built")
+>>>>>>> parent of e571f58808... wp
   if (NOT WITH_INTERNAL_MDAL)
     set (MDAL_PREFIX "" CACHE PATH "Path to MDAL base directory")
   endif()
 
+<<<<<<< HEAD
   # try to configure and build POLY2TRI support
   set (WITH_INTERNAL_POLY2TRI TRUE CACHE BOOL "Determines whether POLY2TRI should be built from internal copy")
 
+=======
+>>>>>>> parent of e571f58808... wp
   # try to configure and build POSTGRESQL support
   set (WITH_POSTGRESQL TRUE CACHE BOOL "Determines whether POSTGRESQL support should be built")
   if (WITH_POSTGRESQL)
@@ -357,10 +389,13 @@ if(WITH_CORE)
     find_package(MDAL REQUIRED) # MDAL provider
   endif()
 
+<<<<<<< HEAD
   if (NOT WITH_INTERNAL_POLY2TRI)
     find_package(Poly2Tri REQUIRED)
   endif()
 
+=======
+>>>>>>> parent of e571f58808... wp
   find_package(SpatiaLite REQUIRED)
 
   if (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
@@ -1057,4 +1092,7 @@ endif()
 if (UNIX AND NOT APPLE)
   add_subdirectory(linux)
 endif()
+<<<<<<< HEAD
 >>>>>>> ceb53cefa430be672028f888a7d0d97d69c62728
+=======
+>>>>>>> parent of e571f58808... wp

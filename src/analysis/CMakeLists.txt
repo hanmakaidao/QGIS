@@ -210,7 +210,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsrasteranalysisutils.cpp
   processing/qgsreclassifyutils.cpp
 
-  processing/qgsalgorithmsbetpointcloud.cpp
+  #processing/qgsalgorithmsbetpointcloud.cpp
 
   raster/qgsalignraster.cpp
   raster/qgsexiftools.cpp
@@ -318,7 +318,7 @@ set(QGIS_ANALYSIS_HDRS
   processing/qgsreclassifyutils.h
 
 
-  processing/qgsalgorithmsbetpointcloud.h
+  #processing/qgsalgorithmsbetpointcloud.h
 
   raster/qgsalignraster.h
   raster/qgsaspectfilter.h

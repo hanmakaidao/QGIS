@@ -2673,7 +2673,7 @@ void QgisApp::createActions()
   connect( mActionRegularPolygon2Points, &QAction::triggered, this,  [ = ] { setMapTool( mMapTools.mRegularPolygon2Points, true ); } );
   connect( mActionRegularPolygonCenterPoint, &QAction::triggered, this,  [ = ] { setMapTool( mMapTools.mRegularPolygonCenterPoint, true ); } );
   connect( mActionRegularPolygonCenterCorner, &QAction::triggered, this,  [ = ] { setMapTool( mMapTools.mRegularPolygonCenterCorner, true ); } );
-  //connect( mActionDigitizeWithCurve, &QAction::triggered, this, &QgisApp::enableDigitizeWithCurve );
+  connect( mActionDigitizeWithCurve, &QAction::triggered, this, &QgisApp::enableDigitizeWithCurve );
   connect( mActionMoveFeature, &QAction::triggered, this, &QgisApp::moveFeature );
   connect( mActionMoveFeatureCopy, &QAction::triggered, this, &QgisApp::moveFeatureCopy );
   connect( mActionRotateFeature, &QAction::triggered, this, &QgisApp::rotateFeature );
@@ -3155,13 +3155,13 @@ void QgisApp::createMenus()
   else
   {
     // on the top of the settings menu
-    //QAction *before = mSettingsMenu->actions().at( 0 );
-   // mSettingsMenu->insertMenu( before, mPanelMenu );
-   // mSettingsMenu->insertMenu( before, mToolbarMenu );
-   // mSettingsMenu->insertAction( before, mActionToggleFullScreen );
-   // mSettingsMenu->insertAction( before, mActionTogglePanelsVisibility );
-    //mSettingsMenu->insertAction( before, mActionToggleMapOnly );
-    //mSettingsMenu->insertSeparator( before );
+    QAction *before = mSettingsMenu->actions().at( 0 );
+    mSettingsMenu->insertMenu( before, mPanelMenu );
+    mSettingsMenu->insertMenu( before, mToolbarMenu );
+    mSettingsMenu->insertAction( before, mActionToggleFullScreen );
+    mSettingsMenu->insertAction( before, mActionTogglePanelsVisibility );
+    mSettingsMenu->insertAction( before, mActionToggleMapOnly );
+    mSettingsMenu->insertSeparator( before );
   }
 
 #ifdef Q_OS_MAC
@@ -3272,7 +3272,7 @@ void QgisApp::createToolBars()
 
   QList<QToolBar *> toolbarMenuToolBars;
   toolbarMenuToolBars << mFileToolBar
-                      //<< mDataSourceManagerToolBar
+                      << mDataSourceManagerToolBar
                       << mLayerToolBar
                       << mDigitizeToolBar
                       << mAdvancedDigitizeToolBar
@@ -3286,7 +3286,7 @@ void QgisApp::createToolBars()
                       << mVectorToolBar
                       << mDatabaseToolBar
                       << mWebToolBar
-                     // << mLabelToolBar
+                      << mLabelToolBar
                       << mSnappingToolBar;
 
 
@@ -3918,14 +3918,14 @@ void QgisApp::createStatusBar()
                 << mAdvancedDigitizeToolBar
                 << mShapeDigitizeToolBar
                 << mFileToolBar
-               // << mDataSourceManagerToolBar
+                << mDataSourceManagerToolBar
                 << mLayerToolBar
                 << mDigitizeToolBar
                 << mMapNavToolBar
                 << mAttributesToolBar
                 << mPluginToolBar
                 << mRasterToolBar
-               // << mLabelToolBar
+                << mLabelToolBar
                 << mVectorToolBar
                 << mDatabaseToolBar
                 << mWebToolBar
@@ -10236,7 +10236,6 @@ void QgisApp::enableDigitizeWithCurve( bool enable )
 
 void QgisApp::enableDigitizeWithCurveAction( bool enable )
 {
-  /*
   QgsSettings settings;
 
   QObject *sender = QObject::sender();
@@ -10252,7 +10251,6 @@ void QgisApp::enableDigitizeWithCurveAction( bool enable )
 
   mMapTools.mAddFeature->setCircularDigitizingEnabled( isChecked );
   static_cast<QgsMapToolCapture *>( mMapTools.mSplitFeatures )->setCircularDigitizingEnabled( isChecked );
-  */
 }
 
 void QgisApp::splitFeatures()
@@ -13604,7 +13602,7 @@ QMenu *QgisApp::getPluginMenu( const QString &menuName )
   if ( !mActionPluginSeparator1 )
   {
     // First plugin - create plugin list separator
-    mActionPluginSeparator1 = mMenuPluginHelp->insertSeparator( before );
+    mActionPluginSeparator1 = mPluginMenu->insertSeparator( before );
   }
   else
   {
@@ -13612,7 +13610,7 @@ QMenu *QgisApp::getPluginMenu( const QString &menuName )
     dst.remove( QChar( '&' ) );
 
     // Plugins exist - search between plugin separator and python separator or end of list
-    QList<QAction *> actions = mMenuPluginHelp->actions();
+    QList<QAction *> actions = mPluginMenu->actions();
     int end = mActionPluginSeparator2 ? actions.indexOf( mActionPluginSeparator2 ) : actions.count();
     for ( int i = actions.indexOf( mActionPluginSeparator1 ) + 1; i < end; i++ )
     {
@@ -13637,7 +13635,7 @@ QMenu *QgisApp::getPluginMenu( const QString &menuName )
   QMenu *menu = new QMenu( cleanedMenuName, this );
   menu->setObjectName( normalizedMenuName( cleanedMenuName ) );
   // Where to put it? - we worked that out above...
-  mMenuPluginHelp->insertMenu( before, menu );
+  mPluginMenu->insertMenu( before, menu );
 
   return menu;
 }
@@ -13654,7 +13652,15 @@ void QgisApp::removePluginMenu( const QString &name, QAction *action )
   menu->removeAction( action );
   if ( menu->actions().isEmpty() )
   {
-    //mPluginMenu->removeAction( menu->menuAction() );
+    mPluginMenu->removeAction( menu->menuAction() );
+  }
+  // Remove separator above plugins in Plugin menu if no plugins remain
+  QList<QAction *> actions = mPluginMenu->actions();
+  int end = mActionPluginSeparator2 ? actions.indexOf( mActionPluginSeparator2 ) : actions.count();
+  if ( actions.indexOf( mActionPluginSeparator1 ) + 1 == end )
+  {
+    mPluginMenu->removeAction( mActionPluginSeparator1 );
+    mActionPluginSeparator1 = nullptr;
   }
 }
 
@@ -13846,12 +13852,12 @@ QMenu *QgisApp::getWebMenu( const QString &menuName )
 
 void QgisApp::insertAddLayerAction( QAction *action )
 {
-  //mAddLayerMenu->insertAction( mActionAddLayerSeparator, action );
+  mAddLayerMenu->insertAction( mActionAddLayerSeparator, action );
 }
 
 void QgisApp::removeAddLayerAction( QAction *action )
 {
-  //mAddLayerMenu->removeAction( action );
+  mAddLayerMenu->removeAction( action );
 }
 
 void QgisApp::addPluginToDatabaseMenu( const QString &name, QAction *action )
@@ -14522,7 +14528,7 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
 {
   updateLabelToolButtons();
 
- // mMenuPasteAs->setEnabled( clipboard() && !clipboard()->isEmpty() );
+  mMenuPasteAs->setEnabled( clipboard() && !clipboard()->isEmpty() );
   mActionPasteAsNewVector->setEnabled( clipboard() && !clipboard()->isEmpty() );
   mActionPasteAsNewMemoryVector->setEnabled( clipboard() && !clipboard()->isEmpty() );
 
@@ -14548,7 +14554,7 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
 
   if ( !layer )
   {
-   // menuSelect->setEnabled( false );
+    menuSelect->setEnabled( false );
     mActionSelectFeatures->setEnabled( false );
     mActionSelectPolygon->setEnabled( false );
     mActionSelectFreehand->setEnabled( false );
@@ -14574,23 +14580,23 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
     mActionAddFeature->setEnabled( false );
     mActionCircularStringCurvePoint->setEnabled( false );
     mActionCircularStringRadius->setEnabled( false );
-  //  mMenuCircle->setEnabled( false );
+    mMenuCircle->setEnabled( false );
     mActionCircle2Points->setEnabled( false );
     mActionCircle3Points->setEnabled( false );
     mActionCircle3Tangents->setEnabled( false );
     mActionCircle2TangentsPoint->setEnabled( false );
     mActionCircleCenterPoint->setEnabled( false );
-    //mMenuEllipse->setEnabled( false );
+    mMenuEllipse->setEnabled( false );
     mActionEllipseCenter2Points->setEnabled( false );
     mActionEllipseCenterPoint->setEnabled( false );
     mActionEllipseExtent->setEnabled( false );
     mActionEllipseFoci->setEnabled( false );
-    //mMenuRectangle->setEnabled( false );
+    mMenuRectangle->setEnabled( false );
     mActionRectangleCenterPoint->setEnabled( false );
     mActionRectangleExtent->setEnabled( false );
     mActionRectangle3PointsDistance->setEnabled( false );
     mActionRectangle3PointsProjected->setEnabled( false );
-    //mMenuRegularPolygon->setEnabled( false );
+    mMenuRegularPolygon->setEnabled( false );
     mActionRegularPolygon2Points->setEnabled( false );
     mActionRegularPolygonCenterPoint->setEnabled( false );
     mActionRegularPolygonCenterCorner->setEnabled( false );
@@ -14656,7 +14662,7 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
     return;
   }
 
-  //menuSelect->setEnabled( true );
+  menuSelect->setEnabled( true );
 
   mActionLayerProperties->setEnabled( QgsProject::instance()->layerIsEmbedded( layer->id() ).isEmpty() );
   mActionAddToOverview->setEnabled( true );
@@ -14754,23 +14760,23 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
         enableShapeTools = enableCircularTools;
         mActionCircularStringCurvePoint->setEnabled( enableCircularTools );
         mActionCircularStringRadius->setEnabled( enableCircularTools );
-        //mMenuCircle->setEnabled( enableShapeTools );
+        mMenuCircle->setEnabled( enableShapeTools );
         mActionCircle2Points->setEnabled( enableShapeTools );
         mActionCircle3Points->setEnabled( enableShapeTools );
         mActionCircle3Tangents->setEnabled( enableShapeTools );
         mActionCircle2TangentsPoint->setEnabled( enableShapeTools );
         mActionCircleCenterPoint->setEnabled( enableShapeTools );
-        //mMenuEllipse->setEnabled( enableShapeTools );
+        mMenuEllipse->setEnabled( enableShapeTools );
         mActionEllipseCenter2Points->setEnabled( enableShapeTools );
         mActionEllipseCenterPoint->setEnabled( enableShapeTools );
         mActionEllipseExtent->setEnabled( enableShapeTools );
         mActionEllipseFoci->setEnabled( enableShapeTools );
-       // mMenuRectangle->setEnabled( enableShapeTools );
+        mMenuRectangle->setEnabled( enableShapeTools );
         mActionRectangleCenterPoint->setEnabled( enableShapeTools );
         mActionRectangleExtent->setEnabled( enableShapeTools );
         mActionRectangle3PointsDistance->setEnabled( enableShapeTools );
         mActionRectangle3PointsProjected->setEnabled( enableShapeTools );
-       // mMenuRegularPolygon->setEnabled( enableShapeTools );
+        mMenuRegularPolygon->setEnabled( enableShapeTools );
         mActionRegularPolygon2Points->setEnabled( enableShapeTools );
         mActionRegularPolygonCenterPoint->setEnabled( enableShapeTools );
         mActionRegularPolygonCenterCorner->setEnabled( enableShapeTools );
@@ -14965,23 +14971,23 @@ void QgisApp::activateDeactivateLayerRelatedActions( QgsMapLayer *layer )
       mActionAddFeature->setEnabled( false );
       mActionCircularStringCurvePoint->setEnabled( false );
       mActionCircularStringRadius->setEnabled( false );
-      //mMenuCircle->setEnabled( false );
+      mMenuCircle->setEnabled( false );
       mActionCircle2Points->setEnabled( false );
       mActionCircle3Points->setEnabled( false );
       mActionCircle3Tangents->setEnabled( false );
       mActionCircle2TangentsPoint->setEnabled( false );
       mActionCircleCenterPoint->setEnabled( false );
-      //mMenuEllipse->setEnabled( false );
+      mMenuEllipse->setEnabled( false );
       mActionEllipseCenter2Points->setEnabled( false );
       mActionEllipseCenterPoint->setEnabled( false );
       mActionEllipseExtent->setEnabled( false );
       mActionEllipseFoci->setEnabled( false );
-      //mMenuRectangle->setEnabled( false );
+      mMenuRectangle->setEnabled( false );
       mActionRectangleCenterPoint->setEnabled( false );
       mActionRectangleExtent->setEnabled( false );
       mActionRectangle3PointsDistance->setEnabled( false );
       mActionRectangle3PointsProjected->setEnabled( false );
-      //mMenuRegularPolygon->setEnabled( false );
+      mMenuRegularPolygon->setEnabled( false );
       mActionRegularPolygon2Points->setEnabled( false );
       mActionRegularPolygonCenterPoint->setEnabled( false );
       mActionRegularPolygonCenterCorner->setEnabled( false );
