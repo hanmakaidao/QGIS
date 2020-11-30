@@ -11,11 +11,6 @@ set(QGIS_CORE_SRCS
   ${CMAKE_SOURCE_DIR}/external/nmea/time.c
   ${CMAKE_SOURCE_DIR}/external/nmea/tok.c
 
-  ${CMAKE_SOURCE_DIR}/external/poly2tri/common/shapes.cc
-  ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/advancing_front.cc
-  ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/cdt.cc
-  ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/sweep_context.cc
-  ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/sweep.cc
   ${CMAKE_SOURCE_DIR}/external/meshOptimizer/simplifier.cpp
 
   callouts/qgscallout.cpp
@@ -284,6 +279,7 @@ set(QGIS_CORE_SRCS
   qgsdiagramrenderer.cpp
   qgsdistancearea.cpp
   qgseditformconfig.cpp
+  qgselevationutils.cpp
   qgsellipsoidutils.cpp
   qgserror.cpp
   qgseventtracing.cpp
@@ -334,6 +330,7 @@ set(QGIS_CORE_SRCS
   qgsmapdecoration.cpp
   qgsmaphittest.cpp
   qgsmaplayer.cpp
+  qgsmaplayerelevationproperties.cpp
   qgsmaplayerlegend.cpp
   qgsmaplayermodel.cpp
   qgsmaplayerproxymodel.cpp
@@ -635,6 +632,7 @@ set(QGIS_CORE_SRCS
   pointcloud/qgspointcloudrequest.cpp
   pointcloud/qgspointcloudblock.cpp
   pointcloud/qgspointcloudlayer.cpp
+  pointcloud/qgspointcloudlayerelevationproperties.cpp
   pointcloud/qgspointcloudlayerrenderer.cpp
   pointcloud/qgspointcloudindex.cpp
   pointcloud/qgspointclouddataprovider.cpp
@@ -733,6 +731,19 @@ set(QGIS_CORE_SRCS
   qgsuserprofile.cpp
   qgsuserprofilemanager.cpp
 )
+
+if (WITH_INTERNAL_POLY2TRI)
+  set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
+    ${CMAKE_SOURCE_DIR}/external/poly2tri/common/shapes.cc
+    ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/advancing_front.cc
+    ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/cdt.cc
+    ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/sweep_context.cc
+    ${CMAKE_SOURCE_DIR}/external/poly2tri/sweep/sweep.cc
+  )
+  include_directories(${CMAKE_SOURCE_DIR}/external/poly2tri)
+else ()
+  include_directories(${Poly2Tri_INCLUDE_DIR})
+endif ()
 
 file(GLOB JSON_HELP_FILES "${CMAKE_SOURCE_DIR}/resources/function_help/json/*")
 if(CMAKE_VERSION VERSION_LESS "3.18" AND NOT USING_NINJA)
@@ -855,6 +866,7 @@ set(QGIS_CORE_HDRS
   qgsdistancearea.h
   qgseditformconfig.h
   qgseditorwidgetsetup.h
+  qgselevationutils.h
   qgsellipsoidutils.h
   qgserror.h
   qgseventtracing.h
@@ -924,6 +936,7 @@ set(QGIS_CORE_HDRS
   qgsmaplayerstore.h
   qgsmaplayerstyle.h
   qgsmaplayerstylemanager.h
+  qgsmaplayerelevationproperties.h
   qgsmaplayertemporalproperties.h
   qgsmaprenderercache.h
   qgsmaprenderercustompainterjob.h
@@ -1323,6 +1336,7 @@ set(QGIS_CORE_HDRS
   pointcloud/qgspointcloudrequest.h
   pointcloud/qgspointcloudblock.h
   pointcloud/qgspointcloudlayer.h
+  pointcloud/qgspointcloudlayerelevationproperties.h
   pointcloud/qgspointcloudlayerrenderer.h
   pointcloud/qgspointcloudindex.h
   pointcloud/qgspointclouddataprovider.h
@@ -1624,7 +1638,6 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/external/nlohmann
   ${CMAKE_SOURCE_DIR}/external/kdbush/include
   ${CMAKE_SOURCE_DIR}/external/nmea
-  ${CMAKE_SOURCE_DIR}/external/poly2tri
   ${CMAKE_SOURCE_DIR}/external/rtree/include
   ${CMAKE_SOURCE_DIR}/external/meshOptimizer
 )
@@ -1730,6 +1743,9 @@ if(ENABLE_MODELTEST)
   target_link_libraries(qgis_core ${Qt5Test_LIBRARIES})
 endif()
 
+if (NOT WITH_INTERNAL_POLY2TRI)
+   target_link_libraries(qgis_core ${Poly2Tri_LIBRARY})
+endif()
 
 if(HAVE_OPENCL)
   target_link_libraries(qgis_core ${OpenCL_LIBRARY})
