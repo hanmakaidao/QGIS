@@ -24,6 +24,28 @@
 #include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
 #include "random"
+#include <pdal/util/FileUtils.hpp>
+#include <pdal/util/Utils.hpp>
+#include <pdal/filters/TransformationFilter.hpp>
+#include <pdal/io/BufferReader.hpp>
+#include <pdal/io/LasReader.hpp>
+#include <pdal/StageFactory.hpp>
+
+#include <memory>
+#include <iostream>
+#include <sstream>
+#include <string>
+
+using namespace pdal;
+using namespace Utils;
+static int runTranslate(std::string const& cmdline, std::string& output)
+{
+  //QgsApplication::libexecPath();
+
+  ///char *prefixPath = getenv("PDAL_PREFIX_PATH");
+  const std::string cmd = "pdal translate";
+  return run_shell_command(cmd + " " + cmdline, output);
+}
 
 ///@cond PRIVATE
 
@@ -53,18 +75,16 @@ class QgsPointCloudGeoReferenceAlgorithmBase : public QgsProcessingAlgorithm
     /**
      * Processes a raster using the generateRandomIntValues method which is implemented in subclasses providing different fuzzy membership types.
      */
-    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) final;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )final;
 
-    /**
-     * Virtual methods for random number generation may be overridden by subclassed algorithms to use specific random number distributions.
-     */
-    virtual long generateRandomLongValue( std::mt19937 &mersenneTwister ) = 0;
-    virtual double generateRandomDoubleValue( std::mt19937 &mersenneTwister ) = 0;
+
+    virtual QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback);
+
+
 
   private:
     //QgsRectangle mExtent;
-    QgsCoordinateReferenceSystem mCrs;
-    //double mPixelSize;
+
     //Qgis::DataType mRasterDataType;
 };
 
@@ -80,6 +100,7 @@ class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudGeoReferenceAlg
     QStringList tags() const override;
     QString shortHelpString() const override;
     QgsPointCloudGeoRefWithSbetAlgorithm *createInstance() const override SIP_FACTORY;
+    QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback) final;
 
   protected:
     void addAlgorithmParams() final;
@@ -87,8 +108,37 @@ class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudGeoReferenceAlg
     bool getPcdInfo( const QVariantMap &parameters, QgsProcessingContext &context ) final;
 
   private:
+
+    QgsCoordinateReferenceSystem mCrs;
+    QString inputpointcloud;
+    QString inputsbet;
+    QString outputcloud;
 };
 
+
+class QgsPointCloudIcpFilterAlgorithm : public QgsPointCloudGeoReferenceAlgorithmBase
+{
+public:
+  QgsPointCloudIcpFilterAlgorithm() = default;
+  QIcon icon() const override { return QgsApplication::getThemeIcon(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString svgIconPath() const override { return QgsApplication::iconPath(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString name() const override;
+  QString displayName() const override;
+  QStringList tags() const override;
+  QString shortHelpString() const override;
+  QgsPointCloudIcpFilterAlgorithm *createInstance() const override SIP_FACTORY;
+  QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback) final;
+
+protected:
+  void addAlgorithmParams() final;
+  Qgis::DataType getPcdDataType(int typeId) final;
+  bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
+
+private:
+  QString inputpointcloud;
+  QString inputpointcloud2;
+  QString outputcloud;
+};
 
 ///@endcond PRIVATE
 
