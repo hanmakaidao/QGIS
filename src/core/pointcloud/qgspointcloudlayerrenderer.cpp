@@ -53,14 +53,24 @@ bool QgsPointCloudLayerRenderer::render()
 
   QgsPointCloudRenderContext context( *renderContext(), mScale, mOffset );
 
+  // Set up the render configuration options
+  QPainter *painter = context.renderContext().painter();
+
+  QgsScopedQPainterState painterState( painter );
+  context.renderContext().setPainterFlagsUsingContext( painter );
+
   mRenderer->startRender( context );
 
   mAttributes.push_back( QgsPointCloudAttribute( QStringLiteral( "X" ), QgsPointCloudAttribute::Int32 ) );
   mAttributes.push_back( QgsPointCloudAttribute( QStringLiteral( "Y" ), QgsPointCloudAttribute::Int32 ) );
 
   // collect attributes required by renderer
-  const QSet< QString > rendererAttributes = mRenderer->usedAttributes( context );
-  for ( const QString &attribute : rendererAttributes )
+  QSet< QString > rendererAttributes = mRenderer->usedAttributes( context );
+
+  if ( !context.renderContext().zRange().isInfinite() )
+    rendererAttributes.insert( QStringLiteral( "Z" ) );
+
+  for ( const QString &attribute : qgis::as_const( rendererAttributes ) )
   {
     if ( mAttributes.indexOf( attribute ) >= 0 )
       continue; // don't re-add attributes we are already going to fetch
@@ -74,12 +84,6 @@ bool QgsPointCloudLayerRenderer::render()
 
     mAttributes.push_back( mLayer->attributes().at( layerIndex ) );
   }
-
-  // Set up the render configuration options
-  QPainter *painter = context.renderContext().painter();
-
-  QgsScopedQPainterState painterState( painter );
-  context.renderContext().setPainterFlagsUsingContext( painter );
 
   QgsPointCloudDataBounds db;
 
