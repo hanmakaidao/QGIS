@@ -27,29 +27,137 @@
 #include <pdal/util/FileUtils.hpp>
 #include <pdal/util/Utils.hpp>
 #include <pdal/filters/TransformationFilter.hpp>
+#include <pdal/util/Extractor.hpp>
+#include <pdal/util/Georeference.hpp>
+#include <pdal/util/IStream.hpp>
+
 #include <pdal/io/BufferReader.hpp>
 #include <pdal/io/LasReader.hpp>
 #include <pdal/StageFactory.hpp>
+#include <pdal/util/Georeference.hpp>
+
+#include <pdal/Reader.hpp>
+#include <pdal/PointTable.hpp>
+#include <pdal/PointView.hpp>
+
 
 #include <memory>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace pdal;
 using namespace Utils;
 static int runTranslate(std::string const& cmdline, std::string& output)
 {
-  //QgsApplication::libexecPath();
-
-  ///char *prefixPath = getenv("PDAL_PREFIX_PATH");
   const std::string cmd = "pdal translate";
   return run_shell_command(cmd + " " + cmdline, output);
 }
 
+
+static int runInfo(std::string const& cmdline, std::string& output)
+{
+  const std::string cmd = "pdal info";
+  return run_shell_command(cmd + " " + cmdline, output);
+}
+
+typedef struct
+{
+    char signature[4];
+    char vendorId[64]; //探测器
+    char softwareVersion[32];
+    float formatVersion;
+    uint16_t headerSize;
+    uint16_t gpsWeek;
+    double minTime; // seconds
+    double maxTime; // seconds
+    uint32_t numRecords;
+    uint16_t numStrips;
+    uint32_t stripPointers[256];
+    double misalignmentAngles[3]; // radians
+    double imuOffsets[3];         // radians
+    double temperature;           // degrees
+    double pressure;              // mbar
+    char freeSpace[830];
+} RieglHeader;
+
+
+typedef struct
+{
+    double gpsTime;
+    uint8_t returnCount;
+    float range[4]; // metres
+    uint16_t intensity[4];
+    float scanAngle;  // radians
+    float roll;       // radians
+    float pitch;      // radians
+    float heading;    // radians
+    double latitude;  // radians
+    double longitude; // radians
+    float elevation;  // metres
+} RieglPulse;
+
+// Optech does it like R3(heading) * R1(-pitch) * R2(-roll)
+pdal::georeference::RotationMatrix createRieglRotationMatrix(double roll, double pitch, double heading)
+{
+    return georeference::RotationMatrix(
+        std::cos(roll) * std::cos(heading) +
+            std::sin(pitch) * std::sin(roll) * std::sin(heading), // m00
+        std::cos(pitch) * std::sin(heading),                      // m01
+        std::cos(heading) * std::sin(roll) -
+            std::cos(roll) * std::sin(pitch) * std::sin(heading), // m02
+        std::cos(heading) * std::sin(pitch) * std::sin(roll) -
+            std::cos(roll) * std::sin(heading), // m10
+        std::cos(pitch) * std::cos(heading),    // m11
+        -std::sin(roll) * std::sin(heading) -
+            std::cos(roll) * std::cos(heading) * std::sin(pitch), // m12
+        -std::cos(pitch) * std::sin(roll),                        // m20
+        std::sin(pitch),                                          // m21
+        std::cos(pitch) * std::cos(roll)                          // m22
+        );
+}
 ///@cond PRIVATE
 
-class QgsPointCloudGeoReferenceAlgorithmBase : public QgsProcessingAlgorithm
+class RieglReaderWithGeoCorrect: public Reader
+{
+public:
+    std::string getName() const;
+
+    static const size_t MaximumNumberOfReturns = 4;
+    static const size_t NumBytesInRecord = 69;
+    static const size_t BufferSize = 1000000;
+    static const size_t MaxNumRecordsInBuffer = BufferSize / NumBytesInRecord;
+
+    RieglReaderWithGeoCorrect();
+
+    const RieglHeader& getHeader() const;
+
+private:
+    typedef std::vector<char> buffer_t;
+    typedef buffer_t::size_type buffer_size_t;
+
+    virtual void initialize();
+    virtual void addDimensions(PointLayoutPtr layout);
+    virtual void ready(PointTableRef table);
+    virtual point_count_t read(PointViewPtr view, point_count_t num);
+    size_t fillBuffer();
+    virtual void done(PointTableRef table);
+
+    RieglHeader m_header;
+    georeference::RotationMatrix m_boresightMatrix;
+    std::unique_ptr<IStream> m_istream;
+    buffer_t m_buffer;
+    LeExtractor m_extractor;
+    size_t m_recordIndex;
+    size_t m_returnIndex;
+    RieglPulse m_pulse;
+};
+
+/*
+关于点云数据处理算法的基础类
+*/
+class QgsPointCloudAlgorithmBase : public QgsProcessingAlgorithm
 {
   public:
     QString group() const final;
@@ -77,19 +185,17 @@ class QgsPointCloudGeoReferenceAlgorithmBase : public QgsProcessingAlgorithm
      */
     QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )final;
 
-
     virtual QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback);
-
-
-
+    
   private:
-    //QgsRectangle mExtent;
-
-    //Qgis::DataType mRasterDataType;
+    QgsRectangle mExtent;
 };
 
+/*
+  点云，依据自轨曲线，对点云XYZ进行校正的算法
 
-class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudGeoReferenceAlgorithmBase
+*/
+class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudAlgorithmBase
 {
   public:
     QgsPointCloudGeoRefWithSbetAlgorithm() = default;
@@ -106,7 +212,8 @@ class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudGeoReferenceAlg
     void addAlgorithmParams() final;
     Qgis::DataType getPcdDataType( int typeId ) final;
     bool getPcdInfo( const QVariantMap &parameters, QgsProcessingContext &context ) final;
-
+    void MyAlgorithm();
+    
   private:
 
     QgsCoordinateReferenceSystem mCrs;
@@ -116,7 +223,7 @@ class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudGeoReferenceAlg
 };
 
 
-class QgsPointCloudIcpFilterAlgorithm : public QgsPointCloudGeoReferenceAlgorithmBase
+class QgsPointCloudIcpFilterAlgorithm : public QgsPointCloudAlgorithmBase
 {
 public:
   QgsPointCloudIcpFilterAlgorithm() = default;
@@ -139,6 +246,89 @@ private:
   QString inputpointcloud2;
   QString outputcloud;
 };
+
+
+class QgsPointCloudMergeAlgorithm : public QgsPointCloudAlgorithmBase
+{
+public:
+  QgsPointCloudMergeAlgorithm() = default;
+  QIcon icon() const override { return QgsApplication::getThemeIcon(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString svgIconPath() const override { return QgsApplication::iconPath(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString name() const override;
+  QString displayName() const override;
+  QStringList tags() const override;
+  QString shortHelpString() const override;
+  QgsPointCloudMergeAlgorithm *createInstance() const override SIP_FACTORY;
+  QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback) final;
+
+protected:
+  void addAlgorithmParams() final;
+  Qgis::DataType getPcdDataType(int typeId) final;
+  bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
+
+private:
+  QStringList inputpointcloud;
+  //QString inputpointcloud2;
+  QString outputcloud;
+};
+
+/*
+点云地形滤波程序： 提取激光雷达地面点
+*/
+
+class QgsPointCloudGroundFilterAlgorithm : public QgsPointCloudAlgorithmBase
+{
+public:
+  QgsPointCloudGroundFilterAlgorithm() = default;
+  QIcon icon() const override { return QgsApplication::getThemeIcon(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString svgIconPath() const override { return QgsApplication::iconPath(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString name() const override;
+  QString displayName() const override;
+  QStringList tags() const override;
+  QString shortHelpString() const override;
+  QgsPointCloudGroundFilterAlgorithm *createInstance() const override SIP_FACTORY;
+  QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback) final;
+
+protected:
+  void addAlgorithmParams() final;
+  Qgis::DataType getPcdDataType(int typeId) final;
+  bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
+
+private:
+  QStringList inputpointcloud;
+  //QString inputpointcloud2;
+  QString outputcloud;
+};
+
+/*
+点云与彩色影像配准功能：将点云图像变为彩色点云
+*/
+
+class QgsPointCloudGetColorAlgorithm : public QgsPointCloudAlgorithmBase
+{
+public:
+  QgsPointCloudGetColorAlgorithm() = default;
+  QIcon icon() const override { return QgsApplication::getThemeIcon(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString svgIconPath() const override { return QgsApplication::iconPath(QStringLiteral("/algorithms/mAlgorithmRandomRaster.svg")); }
+  QString name() const override;
+  QString displayName() const override;
+  QStringList tags() const override;
+  QString shortHelpString() const override;
+  QgsPointCloudGetColorAlgorithm *createInstance() const override SIP_FACTORY;
+  QVariantMap processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback) final;
+
+protected:
+  void addAlgorithmParams() final;
+  Qgis::DataType getPcdDataType(int typeId) final;
+  bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
+
+private:
+  QStringList inputpointcloud;
+  QStringList inputDOM;
+  QString outputcloud;
+};
+
+
 
 ///@endcond PRIVATE
 
