@@ -565,6 +565,7 @@ include_directories(SYSTEM
   ${QTKEYCHAIN_INCLUDE_DIR}
 )
 
+
 if(HAVE_OPENCL)
     include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
 endif()
@@ -574,6 +575,23 @@ if (HAVE_PDAL)
     ${PDAL_INCLUDE_DIR}
   )
 endif()
+
+if (HAVE_COLMAP)
+  include_directories(
+    ${CMAKE_SOURCE_DIR}/external/colmap/src
+    ${CMAKE_SOURCE_DIR}/external/colmap/lib
+    ${Boost_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
+    ${GLOG_INCLUDE_DIRS}
+    ${FREEIMAGE_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
+    ${GLEW_INCLUDE_DIRS}
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5OpenGL_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
+  )
+endif()
+
 
 if(ENABLE_MODELTEST)
   include_directories(../../tests/qt_modeltest)
@@ -711,6 +729,22 @@ if (HAVE_PDAL)
     ${PDAL_LIBRARIES}
   )
 endif()
+
+if (HAVE_COLMAP)
+   target_link_libraries(qgis_app
+     ${Boost_LIBRARY_DIRS}
+     ${Boost_FILESYSTEM_LIBRARY}
+     ${Boost_PROGRAM_OPTIONS_LIBRARY}
+     ${Boost_SYSTEM_LIBRARY}
+     ${GLOG_LIBRARIES}
+     ${FREEIMAGE_LIBRARIES}
+     ${CERES_LIBRARIES}
+     ${OPENGL_LIBRARIES}
+     ${COLMAP_INTERNAL_LIBRARIES}
+  )
+endif()
+
+link_directories( ${Boost_LIBRARY_DIRS})
 
 if(MSVC)
   install(FILES qgis.ico qgis-mime.ico qgis-qgs.ico qgis-qlr.ico qgis-qml.ico qgis-qpt.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)

@@ -56,8 +56,6 @@ QVariantMap QgsPointCloudAlgorithmBase::processAlgorithm( const QVariantMap &par
 {
   return processPointCloudAlgorithm(parameters,context,feedback);
 }
-
-
 //
 //---------------------------------------------------------------QgsPointCloudGeoRefWithSbetAlgorithm----------------------------------------------------------------------------------------------------------
 //

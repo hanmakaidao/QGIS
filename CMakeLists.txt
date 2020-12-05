@@ -240,9 +240,15 @@ if(WITH_CORE)
     set(ORACLE_LIBDIR "" CACHE STRING "Path to OCI libraries")
   endif()
 
-  set (WITH_PDAL FALSE CACHE BOOL "Determines whether PDAL support should be built")
+  set (WITH_PDAL TRUE CACHE BOOL "Determines whether PDAL support should be built")
   if(WITH_PDAL)
     set(HAVE_PDAL TRUE)
+  endif()
+
+  set (WITH_COLMAP TRUE CACHE BOOL "Determines whether ColMap support should be built")
+  if(WITH_COLMAP)
+     add_subdirectory(external/colmap)
+     set(HAVE_COLMAP TRUE)
   endif()
 
   set (WITH_EPT TRUE CACHE BOOL "Determines whether Entwine Point Cloud (EPT) support should be built")
@@ -413,7 +419,7 @@ if(WITH_CORE)
   if (PDAL_FOUND)
     set(HAVE_PDAL TRUE)  # used in qgsconfig.h
   endif()
-
+  
   #############################################################
   # search for Qt5
   set(QT_MIN_VERSION 5.9.0)
@@ -426,7 +432,7 @@ if(WITH_CORE)
       set (HAVE_QT5SERIALPORT TRUE)
   endif()
 
-  find_package(Qt5 COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test UiTools Sql REQUIRED)
+  find_package(Qt5 COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test UiTools Sql OpenGL REQUIRED)
   if (NOT IOS)
     find_package(Qt5 COMPONENTS PrintSupport REQUIRED)
   else()
