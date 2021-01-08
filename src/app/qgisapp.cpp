@@ -938,7 +938,7 @@ QgisApp::QgisApp(QSplashScreen *splash, bool restorePlugins, bool skipVersionChe
   endProfile();
 
   QWidget *centralWidget = this->centralWidget();
-  QGridLayout *centralLayout = new QGridLayout(centralWidget);
+  centralLayout = new QGridLayout(centralWidget);
   centralWidget->setLayout(centralLayout);
   centralLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -1003,14 +1003,15 @@ QgisApp::QgisApp(QSplashScreen *splash, bool restorePlugins, bool skipVersionChe
 
   mCentralContainer = new QStackedWidget;
   mCentralContainer->insertWidget(0, mMapCanvas);
-  mCentralContainer->insertWidget(1, mWelcomePage);
-
+  // mCentralContainer->insertWidget(1, mWelcomePage);
   centralLayout->addWidget(mCentralContainer, 0, 0, 2, 1);
+
   mInfoBar->raise();
 
   connect(mMapCanvas, &QgsMapCanvas::layersChanged, this, &QgisApp::showMapCanvas);
 
-  mCentralContainer->setCurrentIndex(mProjOpen ? 0 : 1);
+ // mCentralContainer->setCurrentIndex(mProjOpen ? 0 : 1);
+  mCentralContainer->setCurrentIndex(0);
 
   startProfile(tr("User input dock"));
   // User Input Dock Widget
@@ -1731,7 +1732,7 @@ QgisApp::QgisApp(QSplashScreen *splash, bool restorePlugins, bool skipVersionChe
     CreateStatusbar();
     CreateControllers();
 
-    ShowLog();
+    //ShowLog();
 
     options_.AddAllOptions();
 
@@ -2636,6 +2637,8 @@ void QgisApp::createActions()
   mActionPluginSeparator1 = nullptr;  // plugin list separator will be created when the first plugin is loaded
   mActionPluginSeparator2 = nullptr;  // python separator will be created only if python is found
   mActionRasterSeparator = nullptr;   // raster plugins list separator will be created when the first plugin is loaded
+
+  connect(mActionChangeDimension, &QAction::triggered, this, &QgisApp::changedimension);
 
   // Project Menu Items
 
@@ -4953,6 +4956,21 @@ void QgisApp::autoSelectAddedLayer(QList<QgsMapLayer *> layers)
     QModelIndex index = mLayerTreeView->node2index(nodeLayer);
     mLayerTreeView->setCurrentIndex(index);
   }
+}
+
+void QgisApp::changedimension()
+{
+ int x=  mCentralContainer->currentIndex();
+  if (x==1)
+  {
+    mCentralContainer->setCurrentIndex(0);
+  }
+  else
+  {
+    mCentralContainer->setCurrentIndex(1);
+  }
+  
+
 }
 
 void QgisApp::createMapTips()
@@ -17137,8 +17155,13 @@ void QgisApp::closeEvent(QCloseEvent* event) {
 }
 */
 void QgisApp::CreateWidgets() {
+  
   model_viewer_widget_ = new ModelViewerWidget(this, &options_);
-  setCentralWidget(model_viewer_widget_);
+ // QSize size(centralWidget()->size().width() *0.55, centralWidget()->size().height() *0.95);
+  //model_viewer_widget_->setMinimumSize(size);
+  //centralLayout->addWidget(model_viewer_widget_, 0, 1, 2, 1);
+  mCentralContainer->insertWidget(1, model_viewer_widget_);
+  mCentralContainer->setCurrentIndex(1);
 
   project_widget_ = new ProjectWidget(this, &options_);
   project_widget_->SetDatabasePath(*options_.database_path);
@@ -17165,6 +17188,7 @@ void QgisApp::CreateWidgets() {
   dock_log_widget_ = new QDockWidget("Log", this);
   dock_log_widget_->setWidget(log_widget_);
   addDockWidget(Qt::RightDockWidgetArea, dock_log_widget_);
+  dock_log_widget_->hide();
 }
 
 void QgisApp::CreateActions() {
@@ -17427,7 +17451,8 @@ void QgisApp::CreateActions() {
 }
 
 void QgisApp::CreateMenus() {
-  QMenu* file_menu = new QMenu(tr("File"), this);
+
+  QMenu* file_menu = mProjectMenu;
   file_menu->addAction(action_project_new_);
   file_menu->addAction(action_project_open_);
   file_menu->addAction(action_project_edit_);
@@ -17443,13 +17468,14 @@ void QgisApp::CreateMenus() {
   file_menu->addAction(action_export_as_text_);
   file_menu->addSeparator();
   file_menu->addAction(action_quit_);
-  menuBar()->addAction(file_menu->menuAction());
+  //menuBar()->addAction(file_menu->menuAction());
 
   QMenu* preprocessing_menu = new QMenu(tr("Processing"), this);
   preprocessing_menu->addAction(action_feature_extraction_);
   preprocessing_menu->addAction(action_feature_matching_);
   preprocessing_menu->addAction(action_database_management_);
-  menuBar()->addAction(preprocessing_menu->menuAction());
+  //menuBar()->addAction(preprocessing_menu->menuAction());
+  mRasterMenu->addMenu(preprocessing_menu);
 
   QMenu* reconstruction_menu = new QMenu(tr("Reconstruction"), this);
   reconstruction_menu->addAction(action_automatic_reconstruction_);
@@ -17464,13 +17490,15 @@ void QgisApp::CreateMenus() {
   reconstruction_menu->addSeparator();
   reconstruction_menu->addAction(action_bundle_adjustment_);
   reconstruction_menu->addAction(action_dense_reconstruction_);
-  menuBar()->addAction(reconstruction_menu->menuAction());
+  //menuBar()->addAction(reconstruction_menu->menuAction());
+  mRasterMenu->addMenu(reconstruction_menu);
 
   QMenu* render_menu = new QMenu(tr("Render"), this);
   render_menu->addAction(action_render_toggle_);
   render_menu->addAction(action_render_reset_view_);
   render_menu->addAction(action_render_options_);
-  menuBar()->addAction(render_menu->menuAction());
+ // menuBar()->addAction(render_menu->menuAction());
+  mViewMenu->addMenu(render_menu);
 
   QMenu* extras_menu = new QMenu(tr("Extras"), this);
   extras_menu->addAction(action_log_show_);
@@ -17485,14 +17513,15 @@ void QgisApp::CreateMenus() {
   extras_menu->addSeparator();
   extras_menu->addAction(action_set_options_);
   extras_menu->addAction(action_reset_options_);
-  menuBar()->addAction(extras_menu->menuAction());
+//  menuBar()->addAction(extras_menu->menuAction());
+  mRasterMenu->addMenu(extras_menu);
 
-  QMenu* help_menu = new QMenu(tr("Help"), this);
+  QMenu* help_menu = mHelpMenu;
   help_menu->addAction(action_about_);
   help_menu->addAction(action_documentation_);
   help_menu->addAction(action_support_);
   help_menu->addAction(action_license_);
-  menuBar()->addAction(help_menu->menuAction());
+  //menuBar()->addAction(help_menu->menuAction());
 
   // TODO: Make the native menu bar work on OSX. Simply setting this to true
   // will result in a menubar which is not clickable until the main window is

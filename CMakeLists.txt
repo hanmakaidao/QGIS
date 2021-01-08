@@ -169,7 +169,6 @@ if(WITH_CORE)
     endif()
     add_definitions(-DWITH_BINDINGS)
   endif()
-
   # server disabled default because it needs FastCGI (which is optional dependency)
   set (WITH_SERVER FALSE CACHE BOOL "Determines whether QGIS server should be built")
   if(WITH_SERVER)
@@ -247,7 +246,7 @@ if(WITH_CORE)
 
   set (WITH_COLMAP TRUE CACHE BOOL "Determines whether ColMap support should be built")
   if(WITH_COLMAP)
-     add_subdirectory(external/colmap)
+     #add_subdirectory(external/colmap)
      set(HAVE_COLMAP TRUE)
   endif()
 

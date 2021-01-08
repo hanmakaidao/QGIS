@@ -191,6 +191,8 @@ class QgsLegendFilterButton;
 class QgsGeoreferencerMainWindow;
 #endif
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+
 /*
 ColMap addins
 */
@@ -217,7 +219,7 @@ ColMap addins
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 using namespace colmap;
-//class ColMapMainWindow;
+
 /**
  * \class QgisApp
  * \brief Main window for the QGIS application
@@ -644,7 +646,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! Menus
     QMenu *projectMenu() { return mProjectMenu; }
-    QMenu *editMenu() { return mEditMenu; }
+    QMenu *editMenu() { return mVectorMenu; }
     QMenu *viewMenu() { return mViewMenu; }
     QMenu *layerMenu() { return mLayerMenu; }
     QMenu *newLayerMenu() { return mNewLayerMenu; }
@@ -912,6 +914,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! connected to layer tree registry bridge, selects first of the newly added map layers
     void autoSelectAddedLayer( QList<QgsMapLayer *> layers );
 
+    void changedimension();
     //! Zoom to full extent
     void zoomFull();
     //! Zoom to the previous extent
@@ -2712,7 +2715,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! interface to QgisApp for plugins
     QgisAppInterface *mQgisInterface = nullptr;
-
+    QGridLayout *centralLayout = nullptr;
     QSplashScreen *mSplash = nullptr;
     //! list of recently opened/saved project files
     QList<QgsRecentProjectItemsModel::RecentProjectData> mRecentProjects;

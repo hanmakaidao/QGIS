@@ -3,6 +3,8 @@ if(NOT WIN32)
 SUBDIRS(${CMAKE_SOURCE_DIR}/external/qt-unix-signals)
 endif()
 
+add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
+
 set(QGIS_APP_SRCS
   ${CMAKE_SOURCE_DIR}/external/nmea/gmath.c
   ${CMAKE_SOURCE_DIR}/external/nmea/time.c
@@ -115,6 +117,33 @@ set(QGIS_APP_SRCS
   decorations/qgsdecorationscalebardialog.cpp
   decorations/qgsdecorationgrid.cpp
   decorations/qgsdecorationgriddialog.cpp
+  colmapui/automatic_reconstruction_widget.cc
+  colmapui/bundle_adjustment_widget.cc
+  colmapui/colormaps.cc
+  colmapui/database_management_widget.cc
+  colmapui/dense_reconstruction_widget.cc
+  colmapui/feature_extraction_widget.cc
+  colmapui/feature_matching_widget.cc
+  colmapui/image_viewer_widget.cc
+  colmapui/license_widget.cc
+  colmapui/line_painter.cc
+  colmapui/log_widget.cc
+  colmapui/match_matrix_widget.cc
+  colmapui/model_viewer_widget.cc
+  colmapui/movie_grabber_widget.cc
+  colmapui/options_widget.cc
+  colmapui/point_painter.cc
+  colmapui/point_viewer_widget.cc
+  colmapui/project_widget.cc
+  colmapui/qt_utils.cc
+  colmapui/reconstruction_manager_widget.cc
+  colmapui/reconstruction_options_widget.cc
+  colmapui/reconstruction_stats_widget.cc
+  colmapui/render_options_widget.cc
+  colmapui/thread_control_widget.cc
+  colmapui/triangle_painter.cc
+  colmapui/undistortion_widget.cc
+  colmapui/resources.qrc
 
   pointcloud/qgspointcloudlayerproperties.cpp
   pointcloud/qgspointcloudlayerstylewidget.cpp
@@ -546,6 +575,7 @@ include_directories(
   ../gui/tableeditor
   ../plugins
   ../python
+  colmapui
   gps
   dwg
   ${CMAKE_SOURCE_DIR}/external/libdxfrw
@@ -578,8 +608,6 @@ endif()
 
 if (HAVE_COLMAP)
   include_directories(
-    ${CMAKE_SOURCE_DIR}/external/colmap/src
-    ${CMAKE_SOURCE_DIR}/external/colmap/lib
     ${Boost_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS}
@@ -589,6 +617,8 @@ if (HAVE_COLMAP)
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5OpenGL_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
+    ${ColMap_INCLUDE_DIR}
+    ${ColMap_INCLUDE_DIR}/lib
   )
 endif()
 
@@ -634,6 +664,32 @@ target_link_libraries(qgis_app
   qgis_analysis
   qgis_native
   libdxfrw
+  colmap
+  colmap_cuda
+  flann
+  graclus
+  lsd
+  pba
+  poisson_recon
+  sift_gpu
+  vlfeat
+  ${Boost_LIBRARY_DIRS}
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${GLOG_LIBRARIES}
+  ${FREEIMAGE_LIBRARIES}
+  ${CERES_LIBRARIES}
+  ${OPENGL_LIBRARIES}
+  ${COLMAP_CPP_LIBRARY}
+  ${COLMAP_CUDA_LIBRARY}
+  ${COLMAP_Flann_LIBRARY}
+  ${COLMAP_graclus_LIBRARY}
+  ${COLMAP_lsd_LIBRARY}
+  ${COLMAP_pba_LIBRARY}
+  ${COLMAP_poisson_LIBRARY}
+  ${COLMAP_siftgpu_LIBRARY}
+  ${COLMAP_vlfeat_LIBRARY}
 )
 
 target_compile_definitions(qgis_app PRIVATE "-DQT_NO_FOREACH")
@@ -740,7 +796,15 @@ if (HAVE_COLMAP)
      ${FREEIMAGE_LIBRARIES}
      ${CERES_LIBRARIES}
      ${OPENGL_LIBRARIES}
-     ${COLMAP_INTERNAL_LIBRARIES}
+     ${COLMAP_CPP_LIBRARY}
+     ${COLMAP_CUDA_LIBRARY}
+     ${COLMAP_Flann_LIBRARY}
+     ${COLMAP_graclus_LIBRARY}
+     ${COLMAP_lsd_LIBRARY}
+     ${COLMAP_pba_LIBRARY}
+     ${COLMAP_poisson_LIBRARY}
+     ${COLMAP_siftgpu_LIBRARY}
+     ${COLMAP_vlfeat_LIBRARY}
   )
 endif()
 
