@@ -167,8 +167,9 @@ class ModelViewerWidget : public QOpenGLWidget,
 
   LinePainter coordinate_axes_painter_;
   LinePainter coordinate_grid_painter_;
-
+  // 点云绘制 
   PointPainter point_painter_;
+  // 点连接线绘制
   LinePainter point_connection_painter_;
 
   LinePainter image_line_painter_;

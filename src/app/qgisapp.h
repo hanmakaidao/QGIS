@@ -2284,6 +2284,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void ExportAll();
     void ExportAs();
     void ExportAsText();
+    void ImportLas();
 
     void FeatureExtraction();
     void FeatureMatching();

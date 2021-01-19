@@ -33,6 +33,8 @@
 
 #include <pdal/io/BufferReader.hpp>
 #include <pdal/io/LasReader.hpp>
+#include <pdal/io/LasWriter.hpp>
+
 #include <pdal/StageFactory.hpp>
 #include <pdal/util/Georeference.hpp>
 
@@ -295,7 +297,7 @@ protected:
   bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
 
 private:
-  QStringList inputpointcloud;
+  QString inputpointcloud;
   //QString inputpointcloud2;
   QString outputcloud;
 };
@@ -323,8 +325,8 @@ protected:
   bool getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context) final;
 
 private:
-  QStringList inputpointcloud;
-  QStringList inputDOM;
+  QString inputpointcloud;
+  QString inputDOM;
   QString outputcloud;
 };
 

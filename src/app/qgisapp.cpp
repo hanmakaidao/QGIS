@@ -17706,7 +17706,15 @@ void QgisApp::ProjectSaveAs() {
 
   UpdateWindowTitle();
 }
+/*
+打开las 文件
+open las file in the 3d modelviewer
+*/
+void QgisApp::ImportLas()
+{
 
+
+}
 void QgisApp::Import() {
   const std::string import_path =
     QFileDialog::getExistingDirectory(this, tr("Select source..."), "",

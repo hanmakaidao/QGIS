@@ -181,8 +181,7 @@ ModelViewerWidget::ModelViewerWidget(QWidget* parent, OptionManager* options)
     : QOpenGLWidget(parent),
       options_(options),
       point_viewer_widget_(new PointViewerWidget(parent, this, options)),
-      image_viewer_widget_(
-          new DatabaseImageViewerWidget(parent, this, options)),
+      image_viewer_widget_( new DatabaseImageViewerWidget(parent, this, options)),
       movie_grabber_widget_(new MovieGrabberWidget(parent, this)),
       mouse_is_pressed_(false),
       focus_distance_(kInitFocusDistance),
@@ -746,14 +745,13 @@ void ModelViewerWidget::UploadPointData(const bool selection_mode) {
   // Assume we want to display the majority of points
   data.reserve(points3D.size());
 
-  const size_t min_track_len =
-      static_cast<size_t>(options_->render->min_track_len);
-
-  if (selected_image_id_ == kInvalidImageId &&
-      images.count(selected_image_id_) == 0) {
-    for (const auto& point3D : points3D) {
-      if (point3D.second.Error() <= options_->render->max_error &&
-          point3D.second.Track().Length() >= min_track_len) {
+  const size_t min_track_len =static_cast<size_t>(options_->render->min_track_len);
+  // 没有选中照片的情况下。选中ID是极大值，选中计数等于零
+  if (selected_image_id_ == kInvalidImageId && images.count(selected_image_id_) == 0)
+  {
+    for (const auto& point3D : points3D)
+    {
+      if (point3D.second.Error() <= options_->render->max_error && point3D.second.Track().Length() >= min_track_len) {
         PointPainter::Data painter_point;
 
         painter_point.x = static_cast<float>(point3D.second.XYZ(0));
@@ -761,15 +759,18 @@ void ModelViewerWidget::UploadPointData(const bool selection_mode) {
         painter_point.z = static_cast<float>(point3D.second.XYZ(2));
 
         Eigen::Vector4f color;
-        if (selection_mode) {
+        if (selection_mode)
+        {
           const size_t index = selection_buffer_.size();
-          selection_buffer_.push_back(
-              std::make_pair(point3D.first, SELECTION_BUFFER_POINT_IDX));
+          selection_buffer_.push_back(std::make_pair(point3D.first, SELECTION_BUFFER_POINT_IDX));
           color = IndexToRGB(index);
 
-        } else if (point3D.first == selected_point3D_id_) {
+        } else if (point3D.first == selected_point3D_id_)
+        {
           color = kSelectedPointColor;
-        } else {
+        }
+        else
+        {
           color = point_colormap_->ComputeColor(point3D.first, point3D.second);
         }
 
@@ -781,11 +782,13 @@ void ModelViewerWidget::UploadPointData(const bool selection_mode) {
         data.push_back(painter_point);
       }
     }
-  } else {  // Image selected
+  } else
+  {  // Image selected
     const auto& selected_image = images[selected_image_id_];
-    for (const auto& point3D : points3D) {
-      if (point3D.second.Error() <= options_->render->max_error &&
-          point3D.second.Track().Length() >= min_track_len) {
+    for (const auto& point3D : points3D)
+    {
+      if (point3D.second.Error() <= options_->render->max_error && point3D.second.Track().Length() >= min_track_len)
+      {
         PointPainter::Data painter_point;
 
         painter_point.x = static_cast<float>(point3D.second.XYZ(0));
@@ -793,16 +796,19 @@ void ModelViewerWidget::UploadPointData(const bool selection_mode) {
         painter_point.z = static_cast<float>(point3D.second.XYZ(2));
 
         Eigen::Vector4f color;
-        if (selection_mode) {
+        if (selection_mode)
+        {
           const size_t index = selection_buffer_.size();
-          selection_buffer_.push_back(
-              std::make_pair(point3D.first, SELECTION_BUFFER_POINT_IDX));
+          selection_buffer_.push_back( std::make_pair(point3D.first, SELECTION_BUFFER_POINT_IDX));
           color = IndexToRGB(index);
-        } else if (selected_image.HasPoint3D(point3D.first)) {
+        } else if (selected_image.HasPoint3D(point3D.first))
+        {
           color = kSelectedImagePlaneColor;
-        } else if (point3D.first == selected_point3D_id_) {
+        } else if (point3D.first == selected_point3D_id_)
+        {
           color = kSelectedPointColor;
-        } else {
+        } else
+        {
           color = point_colormap_->ComputeColor(point3D.first, point3D.second);
         }
 

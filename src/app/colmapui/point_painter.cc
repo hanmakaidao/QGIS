@@ -45,15 +45,14 @@ PointPainter::~PointPainter() {
 void PointPainter::Setup() {
   vao_.destroy();
   vbo_.destroy();
-  if (shader_program_.isLinked()) {
+  if (shader_program_.isLinked())
+  {
     shader_program_.release();
     shader_program_.removeAllShaders();
   }
 
-  shader_program_.addShaderFromSourceFile(QOpenGLShader::Vertex,
-                                          ":/shaders/points.v.glsl");
-  shader_program_.addShaderFromSourceFile(QOpenGLShader::Fragment,
-                                          ":/shaders/points.f.glsl");
+  shader_program_.addShaderFromSourceFile(QOpenGLShader::Vertex,":/shaders/points.v.glsl");
+  shader_program_.addShaderFromSourceFile(QOpenGLShader::Fragment,":/shaders/points.f.glsl");
   shader_program_.link();
   shader_program_.bind();
 
@@ -65,9 +64,11 @@ void PointPainter::Setup() {
 #endif
 }
 
-void PointPainter::Upload(const std::vector<PointPainter::Data>& data) {
+void PointPainter::Upload(const std::vector<PointPainter::Data>& data)
+{
   num_geoms_ = data.size();
-  if (num_geoms_ == 0) {
+  if (num_geoms_ == 0)
+  {
     return;
   }
 
@@ -98,8 +99,8 @@ void PointPainter::Upload(const std::vector<PointPainter::Data>& data) {
 #endif
 }
 
-void PointPainter::Render(const QMatrix4x4& pmv_matrix,
-                          const float point_size) {
+void PointPainter::Render(const QMatrix4x4& pmv_matrix,const float point_size)
+{
   if (num_geoms_ == 0) {
     return;
   }

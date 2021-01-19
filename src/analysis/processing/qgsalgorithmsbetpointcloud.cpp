@@ -66,7 +66,7 @@ QString QgsPointCloudGeoRefWithSbetAlgorithm::name() const
 
 QString QgsPointCloudGeoRefWithSbetAlgorithm::displayName() const
 {
-  return QObject::tr( "geo-correct Point Cloud data file)" );
+  return QObject::tr( "原始数据解算" );
 }
 
 QStringList QgsPointCloudGeoRefWithSbetAlgorithm::tags() const
@@ -143,7 +143,7 @@ QString QgsPointCloudIcpFilterAlgorithm::name() const
 
 QString QgsPointCloudIcpFilterAlgorithm::displayName() const
 {
-  return QObject::tr("ICP Point Cloud data file)");
+  return QObject::tr("点云配准");
 }
 
 QStringList QgsPointCloudIcpFilterAlgorithm::tags() const
@@ -163,8 +163,10 @@ QgsPointCloudIcpFilterAlgorithm *QgsPointCloudIcpFilterAlgorithm::createInstance
 
 void QgsPointCloudIcpFilterAlgorithm::addAlgorithmParams()
 {
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT"), QStringLiteral("INPUT"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT2"), QStringLiteral("INPUT2"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("Reference point cloud"), QStringLiteral("Reference point cloud"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("To Correct"), QStringLiteral("To Correct"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+
+  addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("Output point cloud")));
 }
 
 bool QgsPointCloudIcpFilterAlgorithm::getPcdInfo(const QVariantMap &parameters, QgsProcessingContext &context)
@@ -176,9 +178,9 @@ bool QgsPointCloudIcpFilterAlgorithm::getPcdInfo(const QVariantMap &parameters, 
 QVariantMap QgsPointCloudIcpFilterAlgorithm::processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback)
 {
   //mCrs = parameterAsCrs(parameters, QStringLiteral("TARGET_CRS"), context);
-  inputpointcloud = parameterAsFile(parameters, QStringLiteral("INPUT"), context);
+  inputpointcloud = parameterAsFile(parameters, QStringLiteral("Reference point cloud"), context);
 
-  inputpointcloud2 = parameterAsFile(parameters, QStringLiteral("INPUT2"), context);
+  inputpointcloud2 = parameterAsFile(parameters, QStringLiteral("To Correct"), context);
   
   outputcloud = parameterAsFileOutput(parameters, QStringLiteral("OUTPUT"), context);
 
@@ -195,23 +197,33 @@ QVariantMap QgsPointCloudIcpFilterAlgorithm::processPointCloudAlgorithm(const QV
 
   pdal::StageFactory Factory;
   
-  Stage *filter = Factory.createStage("filters.icp");
-
+  Stage *filter   = Factory.createStage("filters.icp");
 
   filter->setInput(*reader1);
   filter->setInput(*reader2);
+  //PointTable table;
+  //filter->prepare(table);
+  //PointViewSet viewSet = filter->execute(table);
 
-  PointTable table;
-  filter->prepare(table);
-  PointViewSet viewSet = filter->execute(table);
 
-  MetadataNode root = filter->getMetadata();
+  Options options3;
+  options3.add("filename", outputcloud.toStdString());
+  Stage *writer = Factory.createStage("writers.las");
+  writer->setInput(*filter);
+  writer->setOptions(options3);
+  PointTable table2;
+  writer->prepare(table2);
+
+  writer->execute(table2);
+
+
+
+  MetadataNode root = writer->getMetadata();
   MetadataNode transform = root.findChild("transform");
-
   QVariantMap outputs;
   outputs.insert(QStringLiteral("OUTPUT"), outputcloud);
-
   return outputs;
+
 }
 
 Qgis::DataType QgsPointCloudIcpFilterAlgorithm::getPcdDataType(int typeID)
@@ -235,7 +247,7 @@ QString QgsPointCloudMergeAlgorithm::name() const
 
 QString QgsPointCloudMergeAlgorithm::displayName() const
 {
-  return QObject::tr("Merge Point Cloud Flight Strip)");
+  return QObject::tr("点云航带间拼接");
 }
 
 QStringList QgsPointCloudMergeAlgorithm::tags() const
@@ -334,7 +346,7 @@ QStringList QgsPointCloudGroundFilterAlgorithm::tags() const
 
 QString QgsPointCloudGroundFilterAlgorithm::shortHelpString() const
 {
-  return QObject::tr("点云航带间拼接");
+  return QObject::tr("机载LiDAR可以获取快速、低成本地获取大区域的高精度地形测量值。为了获取高精度的地形数据（厘米级），对机载LiDAR点云数据进行“滤波”是一个非常重要的步骤。传统的滤波算法大多是考虑在坡度、高程变化之间的不同来进行区分地物点与地面点，而布料”滤波算法从一个完全新的思路来进行滤波，首先把点云进行翻转，然后假设有一块布料受到重力从上方落下，则最终落下的布料就可以代表当前地形。");
 }
 
 QgsPointCloudGroundFilterAlgorithm *QgsPointCloudGroundFilterAlgorithm::createInstance() const
@@ -345,6 +357,16 @@ QgsPointCloudGroundFilterAlgorithm *QgsPointCloudGroundFilterAlgorithm::createIn
 void QgsPointCloudGroundFilterAlgorithm::addAlgorithmParams()
 {
   addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT"), QStringLiteral("Input Point Cloud"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+
+  std::unique_ptr< QgsProcessingParameterNumber > resolution_parameter = qgis::make_unique< QgsProcessingParameterNumber >(QStringLiteral("RESOLUTION_VALUE"), QObject::tr("RESOLUTION_VALUE"), QgsProcessingParameterNumber::Double, 1.0, true);
+  resolution_parameter->setFlags(resolution_parameter->flags() | QgsProcessingParameterDefinition::FlagAdvanced);
+
+  std::unique_ptr< QgsProcessingParameterRange >ignore_parameter = qgis::make_unique< QgsProcessingParameterRange >(QStringLiteral("Ignore_VALUE"), QObject::tr("ignore_VALUE"), QgsProcessingParameterNumber::Integer, 1.0, true);
+  ignore_parameter->setFlags(ignore_parameter->flags() | QgsProcessingParameterDefinition::FlagAdvanced);
+
+  addParameter(resolution_parameter.release());
+  addParameter(ignore_parameter.release());
+
   addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("Output point cloud")));
 }
 
@@ -359,38 +381,34 @@ bool QgsPointCloudGroundFilterAlgorithm::getPcdInfo(const QVariantMap &parameter
 
 QVariantMap QgsPointCloudGroundFilterAlgorithm::processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback)
 {
-  inputpointcloud = parameterAsFileList(parameters, QStringLiteral("INPUT"), context);
-
+  inputpointcloud = parameterAsFile(parameters, QStringLiteral("INPUT"), context);
   outputcloud = parameterAsFileOutput(parameters, QStringLiteral("OUTPUT"), context);
+  FileUtils::deleteFile(outputcloud.toStdString());
 
-  /*
-  Options options;
-  options.add("filename", inputpointcloud.toStdString());
-  std::unique_ptr<LasReader> reader1(new LasReader());
-  reader1->setOptions(options);
+  PipelineManager mgr;
+  Options optsR;
+  optsR.add("filename", inputpointcloud.toStdString());
+  Stage& reader1 = mgr.addReader("readers.las");
+  reader1.setOptions(optsR);
 
-  Options options2;
-  options2.add("filename", inputpointcloud2.toStdString());
-  std::unique_ptr<LasReader> reader2(new LasReader());
-  reader2->setOptions(options2);
+  Options optsF;
+  optsF.add("resolution", 1.0);
 
-  pdal::StageFactory Factory;
+  Stage& filter = mgr.addFilter("filters.csf");
+  filter.setInput(reader1);
+  filter.setOptions(optsF);
 
-  Stage *filter = Factory.createStage("filters.icp");
+  Options optsW;
+  optsW.add("filename", outputcloud.toStdString());
+  Stage& writer = mgr.addWriter("writers.las");
+  writer.setInput(filter);
+  writer.setOptions(optsW);
 
+  point_count_t np = mgr.execute();
 
-  filter->setInput(*reader1);
-  filter->setInput(*reader2);
-
-  PointTable table;
-  filter->prepare(table);
-  PointViewSet viewSet = filter->execute(table);
-
-  MetadataNode root = filter->getMetadata();
-  MetadataNode transform = root.findChild("transform");
-  */
   QVariantMap outputs;
   outputs.insert(QStringLiteral("OUTPUT"), outputcloud);
+  outputs.insert(QStringLiteral("COUNT"),np );
 
   return outputs;
 }
@@ -424,7 +442,7 @@ QStringList QgsPointCloudGetColorAlgorithm::tags() const
 
 QString QgsPointCloudGetColorAlgorithm::shortHelpString() const
 {
-  return QObject::tr("点云与彩色DOM融合");
+  return QObject::tr("点云着色");
 }
 
 QgsPointCloudGetColorAlgorithm *QgsPointCloudGetColorAlgorithm::createInstance() const
@@ -434,9 +452,9 @@ QgsPointCloudGetColorAlgorithm *QgsPointCloudGetColorAlgorithm::createInstance()
 
 void QgsPointCloudGetColorAlgorithm::addAlgorithmParams()
 {
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT"), QStringLiteral("Input Point Cloud"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT2"), QStringLiteral("Input Point Cloud"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
-  addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("Output point cloud")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT"), QStringLiteral("Point Cloud"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT2"), QStringLiteral("Color DOM"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
+  addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("输出彩色点云数据")));
 }
 
 
@@ -450,38 +468,44 @@ bool QgsPointCloudGetColorAlgorithm::getPcdInfo(const QVariantMap &parameters, Q
 
 QVariantMap QgsPointCloudGetColorAlgorithm::processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback)
 {
-  inputpointcloud = parameterAsFileList(parameters, QStringLiteral("INPUT"), context);
-  inputDOM = parameterAsFileList(parameters, QStringLiteral("INPUT2"), context);
+  inputpointcloud = parameterAsFile(parameters, QStringLiteral("INPUT"), context);
+  inputDOM = parameterAsFile(parameters, QStringLiteral("INPUT2"), context);
   outputcloud = parameterAsFileOutput(parameters, QStringLiteral("OUTPUT"), context);
+  FileUtils::deleteFile(outputcloud.toStdString());
 
-  /*
+  PipelineManager mgr;
+
+  Options optsR;
+  optsR.add("filename", inputpointcloud.toStdString());
+  Stage& reader1 = mgr.addReader("readers.las");
+  reader1.setOptions(optsR);
+
   Options options;
-  options.add("filename", inputpointcloud.toStdString());
-  std::unique_ptr<LasReader> reader1(new LasReader());
-  reader1->setOptions(options);
+  options.add("dimensions", "Red, Green,Blue::255");
+  //options.add("dimensions", "Red, Green,Blue::255");
+  options.add("raster", inputDOM.toStdString());
 
-  Options options2;
-  options2.add("filename", inputpointcloud2.toStdString());
-  std::unique_ptr<LasReader> reader2(new LasReader());
-  reader2->setOptions(options2);
-
-  pdal::StageFactory Factory;
-
-  Stage *filter = Factory.createStage("filters.icp");
+  StringList dims;
+  dims.push_back("Red");
+  dims.push_back("Green");
+  dims.push_back("Blue");
 
 
-  filter->setInput(*reader1);
-  filter->setInput(*reader2);
+  Stage& filter = mgr.addFilter("filters.colorization");
+  filter.setInput(reader1);
+  filter.setOptions(options);
 
-  PointTable table;
-  filter->prepare(table);
-  PointViewSet viewSet = filter->execute(table);
+  Options optsW;
+  optsW.add("filename", outputcloud.toStdString());
+  Stage& writer = mgr.addWriter("writers.las");
+  writer.setInput(filter);
+  writer.setOptions(optsW);
 
-  MetadataNode root = filter->getMetadata();
-  MetadataNode transform = root.findChild("transform");
-  */
+  point_count_t np = mgr.execute();
+
   QVariantMap outputs;
   outputs.insert(QStringLiteral("OUTPUT"), outputcloud);
+  outputs.insert(QStringLiteral("COUNT"), np);
 
   return outputs;
 }
