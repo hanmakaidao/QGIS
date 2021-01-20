@@ -117,7 +117,7 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
   {
     return new QgsLayoutMapWidget( qobject_cast< QgsLayoutItemMap * >( item ), mapCanvas );
   }, createRubberBand );
-  mapItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item )
+  mapItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item, const QVariantMap & )
   {
     QgsLayoutItemMap *map = qobject_cast< QgsLayoutItemMap * >( item );
     Q_ASSERT( map );
@@ -129,6 +129,34 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
     {
       map->zoomToExtent( mapCanvas->mapSettings().visibleExtent() );
     }
+
+    // auto assign a unique id to map items
+    QList<QgsLayoutItemMap *> mapsList;
+    if ( map->layout() )
+      map->layout()->layoutItems( mapsList );
+
+    int counter = mapsList.size() + 1;
+    bool existing = false;
+    while ( true )
+    {
+      existing = false;
+      for ( QgsLayoutItemMap *otherMap : qgis::as_const( mapsList ) )
+      {
+        if ( map == otherMap )
+          continue;
+
+        if ( otherMap->id() == QObject::tr( "Map %1" ).arg( counter ) )
+        {
+          existing = true;
+          break;
+        }
+      }
+      if ( existing )
+        counter++;
+      else
+        break;
+    }
+    map->setId( QObject::tr( "Map %1" ).arg( counter ) );
   } );
   registry->addLayoutItemGuiMetadata( mapItemMetadata.release() );
 
@@ -148,12 +176,12 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
   {
     return new QgsLayoutLabelWidget( qobject_cast< QgsLayoutItemLabel * >( item ) );
   }, createRubberBand );
-  labelItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item )
+  labelItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item, const QVariantMap & properties )
   {
     QgsLayoutItemLabel *label = qobject_cast< QgsLayoutItemLabel * >( item );
     Q_ASSERT( label );
 
-    label->setText( QObject::tr( "Lorem ipsum" ) );
+    label->setText( properties.value( QStringLiteral( "expression" ) ).toString().isEmpty() ? QObject::tr( "Lorem ipsum" ) : QStringLiteral( "[% %1 %]" ).arg( properties.value( QStringLiteral( "expression" ) ).toString() ) );
     if ( QApplication::isRightToLeft() )
     {
       label->setHAlign( Qt::AlignRight );
@@ -177,7 +205,7 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
   {
     return new QgsLayoutLegendWidget( qobject_cast< QgsLayoutItemLegend * >( item ), mapCanvas );
   }, createRubberBand );
-  legendItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item )
+  legendItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item, const QVariantMap & )
   {
     QgsLayoutItemLegend *legend = qobject_cast< QgsLayoutItemLegend * >( item );
     Q_ASSERT( legend );
@@ -218,7 +246,7 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
   {
     return new QgsLayoutScaleBarWidget( qobject_cast< QgsLayoutItemScaleBar * >( item ) );
   }, createRubberBand );
-  scalebarItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item )
+  scalebarItemMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item, const QVariantMap & )
   {
     QgsLayoutItemScaleBar *scalebar = qobject_cast< QgsLayoutItemScaleBar * >( item );
     Q_ASSERT( scalebar );
@@ -266,7 +294,7 @@ void QgsLayoutGuiUtils::registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas )
     picture->setId( northArrowCount > 0 ? QObject::tr( "North Arrow %1" ).arg( northArrowCount + 1 ) : QObject::tr( "North Arrow" ) );
     return picture.release();
   } );
-  northArrowMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item )
+  northArrowMetadata->setItemAddedToLayoutFunction( [ = ]( QgsLayoutItem * item, const QVariantMap & )
   {
     QgsLayoutItemPicture *picture = qobject_cast< QgsLayoutItemPicture * >( item );
     Q_ASSERT( picture );

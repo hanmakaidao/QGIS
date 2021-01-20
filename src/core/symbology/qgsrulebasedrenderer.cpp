@@ -346,7 +346,7 @@ QDomElement QgsRuleBasedRenderer::Rule::save( QDomDocument &doc, QgsSymbolMap &s
   return ruleElem;
 }
 
-void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QgsStringMap props ) const
+void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const
 {
   // do not convert this rule if there are no symbols
   QgsRenderContext context;
@@ -355,9 +355,11 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
 
   if ( !mFilterExp.isEmpty() )
   {
-    if ( !props.value( QStringLiteral( "filter" ), QString() ).isEmpty() )
-      props[ QStringLiteral( "filter" )] += QLatin1String( " AND " );
-    props[ QStringLiteral( "filter" )] += mFilterExp;
+    QString filter = props.value( QStringLiteral( "filter" ), QString() ).toString();
+    if ( !filter.isEmpty() )
+      filter += QLatin1String( " AND " );
+    filter += mFilterExp;
+    props[ QStringLiteral( "filter" )] = filter;
   }
 
   QgsSymbolLayerUtils::mergeScaleDependencies( mMaximumScale, mMinimumScale, props );
@@ -391,9 +393,9 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
       ruleElem.appendChild( descrElem );
     }
 
-    if ( !props.value( QStringLiteral( "filter" ), QString() ).isEmpty() )
+    if ( !props.value( QStringLiteral( "filter" ), QString() ).toString().isEmpty() )
     {
-      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ) );
+      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ).toString() );
     }
 
     QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, props );
@@ -451,31 +453,39 @@ bool QgsRuleBasedRenderer::Rule::startRender( QgsRenderContext &context, const Q
     {
       sf = QStringLiteral( "TRUE" );
     }
-    // If we have more than 50 rules (to stay on the safe side) make a binary tree or SQLITE will fail,
-    // see: https://github.com/qgis/QGIS/issues/27269
-    else if ( subfilters.count() > 50 )
-    {
-      std::function<QString( const QStringList & )>bt = [ &bt ]( const QStringList & subf )
-      {
-        if ( subf.count( ) == 1 )
-        {
-          return subf.at( 0 );
-        }
-        else if ( subf.count( ) == 2 )
-        {
-          return subf.join( QLatin1String( ") OR (" ) ).prepend( '(' ).append( ')' );
-        }
-        else
-        {
-          int midpos = static_cast<int>( subf.length() / 2 );
-          return QStringLiteral( "(%1) OR (%2)" ).arg( bt( subf.mid( 0, midpos ) ) ).arg( bt( subf.mid( midpos ) ) );
-        }
-      };
-      sf = bt( subfilters );
-    }
     else
     {
-      sf = subfilters.join( QLatin1String( ") OR (" ) ).prepend( '(' ).append( ')' );
+      // test for a common case -- all subfilters can be combined into a single "field in (...)" expression
+      if ( QgsExpression::attemptReduceToInClause( subfilters, sf ) )
+      {
+        // success! we can use a simple "field IN (...)" list!
+      }
+      // If we have more than 50 rules (to stay on the safe side) make a binary tree or SQLITE will fail,
+      // see: https://github.com/qgis/QGIS/issues/27269
+      else if ( subfilters.count() > 50 )
+      {
+        std::function<QString( const QStringList & )>bt = [ &bt ]( const QStringList & subf )
+        {
+          if ( subf.count( ) == 1 )
+          {
+            return subf.at( 0 );
+          }
+          else if ( subf.count( ) == 2 )
+          {
+            return subf.join( QLatin1String( ") OR (" ) ).prepend( '(' ).append( ')' );
+          }
+          else
+          {
+            int midpos = static_cast<int>( subf.length() / 2 );
+            return QStringLiteral( "(%1) OR (%2)" ).arg( bt( subf.mid( 0, midpos ) ), bt( subf.mid( midpos ) ) );
+          }
+        };
+        sf = bt( subfilters );
+      }
+      else
+      {
+        sf = subfilters.join( QLatin1String( ") OR (" ) ).prepend( '(' ).append( ')' );
+      }
     }
   }
 
@@ -1052,7 +1062,7 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::clone() const
   return r;
 }
 
-void QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+void QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
 {
   mRootRule->toSld( doc, element, props );
 }
@@ -1460,15 +1470,18 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
   }
   else if ( renderer->type() == QLatin1String( "pointDisplacement" ) || renderer->type() == QLatin1String( "pointCluster" ) )
   {
-    const QgsPointDistanceRenderer *pointDistanceRenderer = dynamic_cast<const QgsPointDistanceRenderer *>( renderer );
-    if ( pointDistanceRenderer )
+    if ( const QgsPointDistanceRenderer *pointDistanceRenderer = dynamic_cast<const QgsPointDistanceRenderer *>( renderer ) )
       return convertFromRenderer( pointDistanceRenderer->embeddedRenderer() );
   }
   else if ( renderer->type() == QLatin1String( "invertedPolygonRenderer" ) )
   {
-    const QgsInvertedPolygonRenderer *invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer *>( renderer );
-    if ( invertedPolygonRenderer )
+    if ( const QgsInvertedPolygonRenderer *invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer *>( renderer ) )
       r.reset( convertFromRenderer( invertedPolygonRenderer->embeddedRenderer() ) );
+  }
+  else if ( renderer->type() == QLatin1String( "mergedFeatureRenderer" ) )
+  {
+    if ( const QgsMergedFeatureRenderer *mergedRenderer = dynamic_cast<const QgsMergedFeatureRenderer *>( renderer ) )
+      r.reset( convertFromRenderer( mergedRenderer->embeddedRenderer() ) );
   }
 
   if ( r )

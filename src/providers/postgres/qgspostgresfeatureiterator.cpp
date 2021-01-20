@@ -113,23 +113,16 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
     }
     mFilterRequiresGeometry = request.filterExpression()->needsGeometry();
 
-    if ( QgsSettings().value( QStringLiteral( "qgis/compileExpressions" ), true ).toBool() )
-    {
-      //IMPORTANT - this MUST be the last clause added!
-      QgsPostgresExpressionCompiler compiler = QgsPostgresExpressionCompiler( source );
+    //IMPORTANT - this MUST be the last clause added!
+    QgsPostgresExpressionCompiler compiler = QgsPostgresExpressionCompiler( source );
 
-      if ( compiler.compile( request.filterExpression() ) == QgsSqlExpressionCompiler::Complete )
-      {
-        useFallbackWhereClause = true;
-        fallbackWhereClause = whereClause;
-        whereClause = QgsPostgresUtils::andWhereClauses( whereClause, compiler.result() );
-        mExpressionCompiled = true;
-        mCompileStatus = Compiled;
-      }
-      else
-      {
-        limitAtProvider = false;
-      }
+    if ( compiler.compile( request.filterExpression() ) == QgsSqlExpressionCompiler::Complete )
+    {
+      useFallbackWhereClause = true;
+      fallbackWhereClause = whereClause;
+      whereClause = QgsPostgresUtils::andWhereClauses( whereClause, compiler.result() );
+      mExpressionCompiled = true;
+      mCompileStatus = Compiled;
     }
     else
     {
@@ -521,8 +514,7 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
 
     if ( !mRequest.simplifyMethod().forceLocalOptimization() &&
          mRequest.simplifyMethod().methodType() != QgsSimplifyMethod::NoSimplification &&
-         QgsWkbTypes::flatType( QgsWkbTypes::singleType( usedGeomType ) ) != QgsWkbTypes::Point &&
-         !QgsWkbTypes::isCurvedType( usedGeomType ) )
+         QgsWkbTypes::flatType( QgsWkbTypes::singleType( usedGeomType ) ) != QgsWkbTypes::Point )
     {
       // PostGIS simplification method to use
       QString simplifyPostgisMethod;
@@ -531,7 +523,7 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
       bool postSimplification;
       postSimplification = false; // default to false. Set to true only for PostGIS >= 2.2 when using st_removerepeatedpoints
 
-      if ( mRequest.simplifyMethod().methodType() == QgsSimplifyMethod::OptimizeForRendering )
+      if ( !QgsWkbTypes::isCurvedType( usedGeomType ) && mRequest.simplifyMethod().methodType() == QgsSimplifyMethod::OptimizeForRendering )
       {
         // Optimize simplification for rendering
         if ( mConn->majorVersion() < 2 )

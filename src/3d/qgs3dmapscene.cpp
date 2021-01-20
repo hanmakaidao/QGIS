@@ -41,6 +41,7 @@
 #include <QOpenGLFunctions>
 #include <QTimer>
 
+#include "qgslogger.h"
 #include "qgsapplication.h"
 #include "qgsaabb.h"
 #include "qgsabstract3dengine.h"
@@ -77,6 +78,9 @@
 #include "qgsskyboxsettings.h"
 
 #include "qgswindow3dengine.h"
+#include "qgspointcloudlayerelevationproperties.h"
+#include "qgspointcloudlayer.h"
+#include "qgspointcloudlayerchunkloader_p.h"
 
 Qgs3DMapScene::Qgs3DMapScene( const Qgs3DMapSettings &map, QgsAbstract3DEngine *engine )
   : mMap( map )
@@ -137,6 +141,8 @@ Qgs3DMapScene::Qgs3DMapScene( const Qgs3DMapSettings &map, QgsAbstract3DEngine *
   connect( &map, &Qgs3DMapSettings::eyeDomeLightingDistanceChanged, this, &Qgs3DMapScene::onEyeDomeShadingSettingsChanged );
   connect( &map, &Qgs3DMapSettings::debugShadowMapSettingsChanged, this, &Qgs3DMapScene::onDebugShadowMapSettingsChanged );
   connect( &map, &Qgs3DMapSettings::debugDepthMapSettingsChanged, this, &Qgs3DMapScene::onDebugDepthMapSettingsChanged );
+  connect( &map, &Qgs3DMapSettings::fpsCounterEnabledChanged, this, &Qgs3DMapScene::fpsCounterEnabledChanged );
+  connect( &map, &Qgs3DMapSettings::cameraMovementSpeedChanged, this, &Qgs3DMapScene::onCameraMovementSpeedChanged );
 
   connect( QgsApplication::instance()->sourceCache(), &QgsSourceCache::remoteSourceFetched, this, [ = ]( const QString & url )
   {
@@ -225,6 +231,9 @@ Qgs3DMapScene::Qgs3DMapScene( const Qgs3DMapSettings &map, QgsAbstract3DEngine *
   // force initial update of debugging setting of preview quads
   onDebugShadowMapSettingsChanged();
   onDebugDepthMapSettingsChanged();
+
+  mCameraController->setCameraNavigationMode( mMap.cameraNavigationMode() );
+  onCameraMovementSpeedChanged();
 }
 
 void Qgs3DMapScene::viewZoomFull()
@@ -498,6 +507,27 @@ void Qgs3DMapScene::onFrameTriggered( float dt )
   }
 
   updateSceneState();
+
+  // lock changing the FPS counter to 5 fps
+  static int frameCount = 0;
+  static float accumulatedTime = 0.0f;
+
+  if ( !mMap.isFpsCounterEnabled() )
+  {
+    frameCount = 0;
+    accumulatedTime = 0;
+    return;
+  }
+
+  frameCount++;
+  accumulatedTime += dt;
+  if ( accumulatedTime >= 0.2f )
+  {
+    float fps = ( float )frameCount / accumulatedTime;
+    frameCount = 0;
+    accumulatedTime = 0.0f;
+    emit fpsCountChanged( fps );
+  }
 }
 
 void Qgs3DMapScene::createTerrain()
@@ -808,7 +838,7 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
   if ( needsSceneUpdate )
     onCameraChanged();   // needed for chunked entities
 
-  connect( layer, &QgsMapLayer::renderer3DChanged, this, &Qgs3DMapScene::onLayerRenderer3DChanged );
+  connect( layer, &QgsMapLayer::request3DUpdate, this, &Qgs3DMapScene::onLayerRenderer3DChanged );
 
   if ( layer->type() == QgsMapLayerType::VectorLayer )
   {
@@ -836,7 +866,7 @@ void Qgs3DMapScene::removeLayerEntity( QgsMapLayer *layer )
   if ( entity )
     entity->deleteLater();
 
-  disconnect( layer, &QgsMapLayer::renderer3DChanged, this, &Qgs3DMapScene::onLayerRenderer3DChanged );
+  disconnect( layer, &QgsMapLayer::request3DUpdate, this, &Qgs3DMapScene::onLayerRenderer3DChanged );
 
   if ( layer->type() == QgsMapLayerType::VectorLayer )
   {
@@ -1029,6 +1059,11 @@ void Qgs3DMapScene::onEyeDomeShadingSettingsChanged()
   shadowRenderingFrameGraph->setupEyeDomeLighting( edlEnabled, edlStrength, edlDistance );
 }
 
+void Qgs3DMapScene::onCameraMovementSpeedChanged()
+{
+  mCameraController->setCameraMovementSpeed( mMap.cameraMovementSpeed() );
+}
+
 void Qgs3DMapScene::exportScene( const Qgs3DMapExportSettings &exportSettings )
 {
   QVector<QString> notParsedLayers;
@@ -1075,4 +1110,16 @@ void Qgs3DMapScene::exportScene( const Qgs3DMapExportSettings &exportSettings )
       message += layerName + "\n";
     QgsMessageOutput::showMessage( tr( "3D exporter warning" ), message, QgsMessageOutput::MessageText );
   }
+}
+
+QVector<const QgsChunkNode *> Qgs3DMapScene::getLayerActiveChunkNodes( QgsMapLayer *layer )
+{
+  QVector<const QgsChunkNode *> chunks;
+  if ( !mLayerEntities.contains( layer ) ) return chunks;
+  if ( QgsChunkedEntity *c = qobject_cast<QgsChunkedEntity *>( mLayerEntities[ layer ] ) )
+  {
+    for ( QgsChunkNode *n : c->activeNodes() )
+      chunks.push_back( n );
+  }
+  return chunks;
 }

@@ -103,29 +103,44 @@ class GUI_EXPORT QgsLayoutItemAbstractGuiMetadata
      */
     virtual QIcon creationIcon() const { return QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddBasicRectangle.svg" ) ); }
 
+    /*
+     * IMPORTANT: While it seems like /Factory/ would be the correct annotations here, that's not
+     * the case.
+     * As per Phil Thomson's advice on https://www.riverbankcomputing.com/pipermail/pyqt/2017-July/039450.html:
+     *
+     * "
+     * /Factory/ is used when the instance returned is guaranteed to be new to Python.
+     * In this case it isn't because it has already been seen when being returned by QgsProcessingAlgorithm::createInstance()
+     * (However for a different sub-class implemented in C++ then it would be the first time it was seen
+     * by Python so the /Factory/ on create() would be correct.)
+     *
+     * You might try using /TransferBack/ on create() instead - that might be the best compromise.
+     * "
+     */
+
     /**
      * Creates a configuration widget for an \a item of this type. Can return NULLPTR if no configuration GUI is required.
      */
-    virtual QgsLayoutItemBaseWidget *createItemWidget( QgsLayoutItem *item ) SIP_FACTORY { Q_UNUSED( item ) return nullptr; }
+    virtual QgsLayoutItemBaseWidget *createItemWidget( QgsLayoutItem *item ) SIP_TRANSFERBACK { Q_UNUSED( item ) return nullptr; }
 
     /**
      * Creates a rubber band for use when creating layout items of this type. Can return NULLPTR if no rubber band
      * should be created. The default behavior is to create a rectangular rubber band.
      * \see createNodeRubberBand()
      */
-    virtual QgsLayoutViewRubberBand *createRubberBand( QgsLayoutView *view ) SIP_FACTORY;
+    virtual QgsLayoutViewRubberBand *createRubberBand( QgsLayoutView *view ) SIP_TRANSFERBACK;
 
     /**
      * Creates a rubber band for use when creating layout node based items of this type. Can return NULLPTR if no rubber band
      * should be created. The default behavior is to return NULLPTR.
      * \see createRubberBand()
      */
-    virtual QAbstractGraphicsShapeItem *createNodeRubberBand( QgsLayoutView *view ) SIP_FACTORY;
+    virtual QAbstractGraphicsShapeItem *createNodeRubberBand( QgsLayoutView *view ) SIP_TRANSFERBACK;
 
     /**
      * Creates an instance of the corresponding item type.
      */
-    virtual QgsLayoutItem *createItem( QgsLayout *layout ) SIP_FACTORY;
+    virtual QgsLayoutItem *createItem( QgsLayout *layout ) SIP_TRANSFERBACK;
 
     /**
      * Called when a newly created item of the associated type has been added to a layout.
@@ -155,7 +170,7 @@ typedef std::function<QgsLayoutViewRubberBand *( QgsLayoutView * )> QgsLayoutIte
 typedef std::function<QAbstractGraphicsShapeItem *( QgsLayoutView * )> QgsLayoutNodeItemRubberBandFunc SIP_SKIP;
 
 //! Layout item added to layout callback
-typedef std::function<void ( QgsLayoutItem * )> QgsLayoutItemAddedToLayoutFunc SIP_SKIP;
+typedef std::function<void ( QgsLayoutItem *, const QVariantMap & )> QgsLayoutItemAddedToLayoutFunc SIP_SKIP;
 
 #ifndef SIP_RUN
 
@@ -257,8 +272,22 @@ class GUI_EXPORT QgsLayoutItemGuiMetadata : public QgsLayoutItemAbstractGuiMetad
     QgsLayoutItemBaseWidget *createItemWidget( QgsLayoutItem *item ) override { return mWidgetFunc ? mWidgetFunc( item ) : nullptr; }
     QgsLayoutViewRubberBand *createRubberBand( QgsLayoutView *view ) override { return mRubberBandFunc ? mRubberBandFunc( view ) : nullptr; }
     QAbstractGraphicsShapeItem *createNodeRubberBand( QgsLayoutView *view ) override { return mNodeRubberBandFunc ? mNodeRubberBandFunc( view ) : nullptr; }
+
     QgsLayoutItem *createItem( QgsLayout *layout ) override;
     void newItemAddedToLayout( QgsLayoutItem *item ) override;
+
+    /**
+     * Called when a newly created item of the associated type has been added to a layout.
+     *
+     * This is only called for additions which result from GUI operations - i.e. it is not
+     * called for items added from templates.
+     *
+     * The \a properties map will be filled with any custom properties which were specified during
+     * the item creation.
+     *
+     * \since QGIS 3.18
+     */
+    void newItemAddedToLayout( QgsLayoutItem *item, const QVariantMap &properties );
 
   protected:
     QIcon mIcon;
@@ -356,6 +385,18 @@ class GUI_EXPORT QgsLayoutItemGuiRegistry : public QObject
     QgsLayoutItemAbstractGuiMetadata *itemMetadata( int metadataId ) const;
 
     /**
+     * Returns the GUI item metadata ID which corresponds to the specified layout item \a type.
+     *
+     * In the case that multiple GUI metadata classes exist for a single layout item \a type then
+     * only the first encountered GUI metadata ID will be returned.
+     *
+     * Returns -1 if no matching metadata is found in the GUI registry.
+     *
+     * \since QGIS 3.18
+     */
+    int metadataIdForItemType( int type ) const;
+
+    /**
      * Registers the gui metadata for a new layout item type. Takes ownership of the metadata instance.
      */
     bool addLayoutItemGuiMetadata( QgsLayoutItemAbstractGuiMetadata *metadata SIP_TRANSFER );
@@ -377,23 +418,56 @@ class GUI_EXPORT QgsLayoutItemGuiRegistry : public QObject
      */
     const QgsLayoutItemGuiGroup &itemGroup( const QString &id );
 
+    /*
+     * IMPORTANT: While it seems like /Factory/ would be the correct annotations here, that's not
+     * the case.
+     * As per Phil Thomson's advice on https://www.riverbankcomputing.com/pipermail/pyqt/2017-July/039450.html:
+     *
+     * "
+     * /Factory/ is used when the instance returned is guaranteed to be new to Python.
+     * In this case it isn't because it has already been seen when being returned by QgsProcessingAlgorithm::createInstance()
+     * (However for a different sub-class implemented in C++ then it would be the first time it was seen
+     * by Python so the /Factory/ on create() would be correct.)
+     *
+     * You might try using /TransferBack/ on create() instead - that might be the best compromise.
+     * "
+     */
+
     /**
      * Creates a new instance of a layout item given the item metadata \a metadataId, target \a layout.
      */
-    QgsLayoutItem *createItem( int metadataId, QgsLayout *layout ) const SIP_FACTORY;
+    QgsLayoutItem *createItem( int metadataId, QgsLayout *layout ) const SIP_TRANSFERBACK;
 
     /**
      * Called when a newly created item of the associated metadata \a metadataId has been added to a layout.
      *
      * This is only called for additions which result from GUI operations - i.e. it is not
      * called for items added from templates.
+     *
+     * Since QGIS 3.18 the optional \a properties argument can be used to pass custom properties to the
+     * QgsLayoutItemGuiMetadata::newItemAddedToLayout() function.
      */
-    void newItemAddedToLayout( int metadataId, QgsLayoutItem *item );
+    void newItemAddedToLayout( int metadataId, QgsLayoutItem *item, const QVariantMap &properties = QVariantMap() );
+
+    /*
+     * IMPORTANT: While it seems like /Factory/ would be the correct annotations here, that's not
+     * the case.
+     * As per Phil Thomson's advice on https://www.riverbankcomputing.com/pipermail/pyqt/2017-July/039450.html:
+     *
+     * "
+     * /Factory/ is used when the instance returned is guaranteed to be new to Python.
+     * In this case it isn't because it has already been seen when being returned by QgsProcessingAlgorithm::createInstance()
+     * (However for a different sub-class implemented in C++ then it would be the first time it was seen
+     * by Python so the /Factory/ on create() would be correct.)
+     *
+     * You might try using /TransferBack/ on create() instead - that might be the best compromise.
+     * "
+     */
 
     /**
      * Creates a new instance of a layout item configuration widget for the specified \a item.
      */
-    QgsLayoutItemBaseWidget *createItemWidget( QgsLayoutItem *item ) const SIP_FACTORY;
+    QgsLayoutItemBaseWidget *createItemWidget( QgsLayoutItem *item ) const SIP_TRANSFERBACK;
 
     /**
      * Creates a new rubber band item for the specified item \a metadataId and destination \a view.

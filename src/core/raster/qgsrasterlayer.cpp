@@ -300,17 +300,12 @@ void QgsRasterLayer::draw( QPainter *theQPainter,
   }
 
   QgsDebugMsgLevel( QStringLiteral( "total raster draw time (ms):     %1" ).arg( time.elapsed(), 5 ), 4 );
-} //end of draw method
+}
 
 QgsLegendColorList QgsRasterLayer::legendSymbologyItems() const
 {
-  QList< QPair< QString, QColor > > symbolList;
   QgsRasterRenderer *renderer = mPipe.renderer();
-  if ( renderer )
-  {
-    renderer->legendSymbologyItems( symbolList );
-  }
-  return symbolList;
+  return renderer ? renderer->legendSymbologyItems() : QList< QPair< QString, QColor > >();;
 }
 
 QString QgsRasterLayer::htmlMetadata() const
@@ -1468,11 +1463,11 @@ bool QgsRasterLayer::accept( QgsStyleEntityVisitorInterface *visitor ) const
 }
 
 
-bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsStringMap &props ) const
+bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QVariantMap &props ) const
 {
   Q_UNUSED( errorMessage )
 
-  QgsStringMap localProps = QgsStringMap( props );
+  QVariantMap localProps = QVariantMap( props );
   if ( hasScaleBasedVisibility() )
   {
     // TODO: QgsSymbolLayerUtils::mergeScaleDependencies generate SE only and not SLD1.0

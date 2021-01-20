@@ -33,6 +33,7 @@
 #include "qgsvector3d.h"
 #include "qgsskyboxsettings.h"
 #include "qgsshadowsettings.h"
+#include "qgscameracontroller.h"
 
 class QgsMapLayer;
 class QgsRasterLayer;
@@ -476,6 +477,33 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      */
     void setProjectionType( const Qt3DRender::QCameraLens::ProjectionType projectionType ) SIP_SKIP;
 
+#ifndef SIP_RUN
+
+    /**
+     * Returns the navigation mode used by the camera
+     * \since QGIS 3.18
+     */
+    QgsCameraController::NavigationMode cameraNavigationMode() const { return mCameraNavigationMode; }
+
+    /**
+     * Sets the navigation mode for the camera
+     * \since QGIS 3.18
+     */
+    void setCameraNavigationMode( QgsCameraController::NavigationMode navigationMode );
+#endif
+
+    /**
+     * Returns the camera movement speed
+     * \since QGIS 3.18
+     */
+    double cameraMovementSpeed() const { return mCameraMovementSpeed; }
+
+    /**
+     * Sets the camera movement speed
+     * \since QGIS 3.18
+     */
+    void setCameraMovementSpeed( double movementSpeed );
+
     /**
      * Sets DPI used for conversion between real world units (e.g. mm) and pixels
      * \param dpi the number of dot per inch
@@ -528,6 +556,20 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      * \since QGIS 3.16
      */
     void setIsSkyboxEnabled( bool enabled ) { mIsSkyboxEnabled = enabled; }
+
+    /**
+     * Returns whether FPS counter label is enabled
+     * \see setIsFpsCounterEnabled()
+     * \since QGIS 3.18
+     */
+    bool isFpsCounterEnabled() const { return mIsFpsCounterEnabled; }
+
+    /**
+     * Sets whether FPS counter label is enabled
+     * \see isFpsCounterEnabled()
+     * \since QGIS 3.18
+     */
+    void setIsFpsCounterEnabled( bool fpsCounterEnabled );
 
   signals:
     //! Emitted when the background color has changed
@@ -665,6 +707,18 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     void projectionTypeChanged();
 
     /**
+     * Emitted when the camera navigation mode was changed
+     * \since QGIS 3.18
+     */
+    void cameraNavigationModeChanged();
+
+    /**
+     * Emitted when the camera movement speed was changed
+     * \since QGIS 3.18
+     */
+    void cameraMovementSpeedChanged();
+
+    /**
      * Emitted when skybox settings are changed
      * \since QGIS 3.16
      */
@@ -675,6 +729,13 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      * \since QGIS 3.16
      */
     void shadowSettingsChanged();
+
+    /**
+     * Emitted when the FPS counter is enabled or disabled
+     *
+     * \since QGIS 3.18
+     */
+    void fpsCounterEnabledChanged( bool fpsCounterEnabled );
 
   private:
 #ifdef SIP_RUN
@@ -705,6 +766,8 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     QList<QgsDirectionalLightSettings> mDirectionalLights;  //!< List of directional lights defined for the scene
     float mFieldOfView = 45.0f; //<! Camera lens field of view value
     Qt3DRender::QCameraLens::ProjectionType mProjectionType = Qt3DRender::QCameraLens::PerspectiveProjection;  //<! Camera lens projection type
+    QgsCameraController::NavigationMode mCameraNavigationMode = QgsCameraController::NavigationMode::TerrainBasedNavigation;
+    double mCameraMovementSpeed = 5.0;
     QList<QgsMapLayerRef> mLayers;   //!< Layers to be rendered
     QList<QgsMapLayerRef> mTerrainLayers;   //!< Terrain layers to be rendered
     QList<QgsAbstract3DRenderer *> mRenderers;  //!< Extra stuff to render as 3D object
@@ -713,6 +776,7 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     QgsPathResolver mPathResolver;
     QgsMapThemeCollection *mMapThemes = nullptr;   //!< Pointer to map themes (e.g. from the current project) to resolve map theme content from the name
     double mDpi = 96;  //!< Dot per inch value for the screen / painter
+    bool mIsFpsCounterEnabled = false;
 
     bool mIsSkyboxEnabled = false;  //!< Whether the skybox is enabled
     QgsSkyboxSettings mSkyboxSettings; //!< Skybox related configuration

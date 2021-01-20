@@ -167,6 +167,31 @@ class TestQgsWmsProvider: public QObject
 
     }
 
+    void providerUriLocalFile()
+    {
+      QString uriString = QStringLiteral( "url=file:///my/local/tiles.mbtiles&type=mbtiles" );
+      QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "wms" ), uriString );
+      QVariantMap expectedParts { { QString( "type" ), QVariant( "mbtiles" ) },
+        { QString( "path" ), QVariant( "/my/local/tiles.mbtiles" ) } };
+      QCOMPARE( parts, expectedParts );
+
+      QString encodedUri = QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "wms" ), parts );
+      QCOMPARE( encodedUri, uriString );
+    }
+
+    void testOsmMetadata()
+    {
+      // test that we auto-populate openstreetmap tile metadata
+
+      // don't actually hit the osm server -- the url below uses "file" instead of "http"!
+      QgsWmsProvider provider( QStringLiteral( "type=xyz&url=file://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0" ), QgsDataProvider::ProviderOptions(), mCapabilities );
+      QCOMPARE( provider.layerMetadata().identifier(), QStringLiteral( "OpenStreetMap tiles" ) );
+      QCOMPARE( provider.layerMetadata().title(), QStringLiteral( "OpenStreetMap tiles" ) );
+      QVERIFY( !provider.layerMetadata().abstract().isEmpty() );
+      QCOMPARE( provider.layerMetadata().licenses().at( 0 ), QStringLiteral( "Open Data Commons Open Database License (ODbL)" ) );
+      QCOMPARE( provider.layerMetadata().licenses().at( 1 ), QStringLiteral( "Creative Commons Attribution-ShareAlike (CC-BY-SA)" ) );
+      QVERIFY( provider.layerMetadata().rights().at( 0 ).startsWith( "Base map and data from OpenStreetMap and OpenStreetMap Foundation" ) );
+    }
 
     bool imageCheck( const QString &testType, QgsMapLayer *layer, const QgsRectangle &extent )
     {

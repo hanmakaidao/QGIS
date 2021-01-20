@@ -29,9 +29,6 @@
 #include "qgsmaprenderercache.h"
 #include "qgsmessagelog.h"
 #include "qgspallabeling.h"
-#include "qgsvectorlayerrenderer.h"
-#include "qgsvectorlayer.h"
-#include "qgsvectortilelayer.h"
 #include "qgsexception.h"
 #include "qgslabelingengine.h"
 #include "qgsmaplayerlistutils.h"
@@ -45,11 +42,30 @@
 #include "qgssymbollayerutils.h"
 #include "qgsmaplayertemporalproperties.h"
 #include "qgsmaplayerelevationproperties.h"
-#include "qgsannotationlayer.h"
+#include "qgsvectorlayerrenderer.h"
 
 ///@cond PRIVATE
 
 const QString QgsMapRendererJob::LABEL_CACHE_ID = QStringLiteral( "_labels_" );
+
+bool LayerRenderJob::imageCanBeComposed() const
+{
+  if ( imageInitialized )
+  {
+    if ( renderer )
+    {
+      return renderer->isReadyToCompose();
+    }
+    else
+    {
+      return true;
+    }
+  }
+  else
+  {
+    return false;
+  }
+}
 
 QgsMapRendererJob::QgsMapRendererJob( const QgsMapSettings &settings )
   : mSettings( settings )
@@ -303,7 +319,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
 
   if ( mCache )
   {
-    bool cacheValid = mCache->init( mSettings.visibleExtent(), mSettings.scale() );
+    bool cacheValid = mCache->updateParameters( mSettings.visibleExtent(), mSettings.mapToPixel() );
     Q_UNUSED( cacheValid )
     QgsDebugMsgLevel( QStringLiteral( "CACHE VALID: %1" ).arg( cacheValid ), 4 );
   }
@@ -419,25 +435,28 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
       continue;
     }
 
+    QElapsedTimer layerTime;
+    layerTime.start();
+    job.renderer = ml->createMapRenderer( job.context );
+
     // If we are drawing with an alternative blending mode then we need to render to a separate image
     // before compositing this on the map. This effectively flattens the layer and prevents
     // blending occurring between objects on the layer
-    if ( mCache || ( !painter && !deferredPainterSet ) || needTemporaryImage( ml ) )
+    if ( mCache || ( !painter && !deferredPainterSet ) || ( job.renderer && job.renderer->forceRasterRender() ) )
     {
       // Flattened image for drawing when a blending mode is set
       job.context.setPainter( allocateImageAndPainter( ml->id(), job.img ) );
       if ( ! job.img )
       {
+        delete job.renderer;
+        job.renderer = nullptr;
         layerJobs.removeLast();
         continue;
       }
     }
 
-    QElapsedTimer layerTime;
-    layerTime.start();
-    job.renderer = ml->createMapRenderer( job.context );
     job.renderingTime = layerTime.elapsed(); // include job preparation time in layer rendering time
-  } // while (li.hasPrevious())
+  }
 
   return layerJobs;
 }
@@ -740,7 +759,12 @@ void QgsMapRendererJob::cleanupLabelJob( LabelRenderJob &job )
 
 #define DEBUG_RENDERING 0
 
-QImage QgsMapRendererJob::composeImage( const QgsMapSettings &settings, const LayerRenderJobs &jobs, const LabelRenderJob &labelJob )
+QImage QgsMapRendererJob::composeImage(
+  const QgsMapSettings &settings,
+  const LayerRenderJobs &jobs,
+  const LabelRenderJob &labelJob,
+  const QgsMapRendererCache *cache
+)
 {
   QImage image( settings.deviceOutputSize(), settings.outputImageFormat() );
   image.setDevicePixelRatio( settings.devicePixelRatio() );
@@ -760,19 +784,19 @@ QImage QgsMapRendererJob::composeImage( const QgsMapSettings &settings, const La
     if ( job.layer && job.layer->customProperty( QStringLiteral( "rendering/renderAboveLabels" ) ).toBool() )
       continue; // skip layer for now, it will be rendered after labels
 
-    if ( !job.imageInitialized )
-      continue; // img not safe to compose
+    QImage img = layerImageToBeComposed( settings, job, cache );
+    if ( img.isNull() )
+      continue; // image is not prepared and not even in cache
 
     painter.setCompositionMode( job.blendMode );
     painter.setOpacity( job.opacity );
 
 #if DEBUG_RENDERING
-    job.img->save( QString( "/tmp/final_%1.png" ).arg( i ) );
+    img.save( QString( "/tmp/final_%1.png" ).arg( i ) );
     i++;
 #endif
-    Q_ASSERT( job.img );
 
-    painter.drawImage( 0, 0, *job.img );
+    painter.drawImage( 0, 0, img );
   }
 
   // IMPORTANT - don't draw labelJob img before the label job is complete,
@@ -793,15 +817,14 @@ QImage QgsMapRendererJob::composeImage( const QgsMapSettings &settings, const La
     if ( !job.layer || !job.layer->customProperty( QStringLiteral( "rendering/renderAboveLabels" ) ).toBool() )
       continue;
 
-    if ( !job.imageInitialized )
-      continue; // img not safe to compose
+    QImage img = layerImageToBeComposed( settings, job, cache );
+    if ( img.isNull() )
+      continue; // image is not prepared and not even in cache
 
     painter.setCompositionMode( job.blendMode );
     painter.setOpacity( job.opacity );
 
-    Q_ASSERT( job.img );
-
-    painter.drawImage( 0, 0, *job.img );
+    painter.drawImage( 0, 0, img );
   }
 
   painter.end();
@@ -809,6 +832,28 @@ QImage QgsMapRendererJob::composeImage( const QgsMapSettings &settings, const La
   image.save( "/tmp/final.png" );
 #endif
   return image;
+}
+
+QImage QgsMapRendererJob::layerImageToBeComposed(
+  const QgsMapSettings &settings,
+  const LayerRenderJob &job,
+  const QgsMapRendererCache *cache
+)
+{
+  if ( job.imageCanBeComposed() )
+  {
+    Q_ASSERT( job.img );
+    return *job.img;
+  }
+  else
+  {
+    if ( cache && cache->hasAnyCacheImage( job.layerId ) )
+    {
+      return cache->transformedCacheImage( job.layerId, settings.mapToPixel() );
+    }
+    else
+      return QImage();
+  }
 }
 
 void QgsMapRendererJob::composeSecondPass( LayerRenderJobs &secondPassJobs, LabelRenderJob &labelJob )
@@ -930,60 +975,6 @@ void QgsMapRendererJob::logRenderingTime( const LayerRenderJobs &jobs, const Lay
     QgsMessageLog::logMessage( tr( "%1 ms: %2" ).arg( t ).arg( QStringList( elapsed.values( t ) ).join( QLatin1String( ", " ) ) ), tr( "Rendering" ) );
   }
   QgsMessageLog::logMessage( QStringLiteral( "---" ), tr( "Rendering" ) );
-}
-
-bool QgsMapRendererJob::needTemporaryImage( QgsMapLayer *ml )
-{
-  switch ( ml->type() )
-  {
-    case QgsMapLayerType::VectorLayer:
-    {
-      QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( ml );
-      if ( vl->renderer() && vl->renderer()->forceRasterRender() )
-      {
-        //raster rendering is forced for this layer
-        return true;
-      }
-      if ( mSettings.testFlag( QgsMapSettings::UseAdvancedEffects ) &&
-           ( ( vl->blendMode() != QPainter::CompositionMode_SourceOver )
-             || ( vl->featureBlendMode() != QPainter::CompositionMode_SourceOver )
-             || ( !qgsDoubleNear( vl->opacity(), 1.0 ) ) ) )
-      {
-        //layer properties require rasterization
-        return true;
-      }
-      break;
-    }
-    case QgsMapLayerType::RasterLayer:
-    {
-      // preview of intermediate raster rendering results requires a temporary output image
-      if ( mSettings.testFlag( QgsMapSettings::RenderPartialOutput ) )
-        return true;
-      break;
-    }
-
-    case QgsMapLayerType::PointCloudLayer:
-      // point cloud layers should always be rasterized -- we don't want to export points as vectors
-      // to formats like PDF!
-      return true;
-
-    case QgsMapLayerType::MeshLayer:
-    case QgsMapLayerType::VectorTileLayer:
-    case QgsMapLayerType::PluginLayer:
-    case QgsMapLayerType::AnnotationLayer:
-    {
-      if ( mSettings.testFlag( QgsMapSettings::UseAdvancedEffects ) &&
-           ( !qgsDoubleNear( ml->opacity(), 1.0 ) ) )
-      {
-        //layer properties require rasterization
-        return true;
-      }
-      break;
-    }
-
-  }
-
-  return false;
 }
 
 void QgsMapRendererJob::drawLabeling( QgsRenderContext &renderContext, QgsLabelingEngine *labelingEngine2, QPainter *painter )

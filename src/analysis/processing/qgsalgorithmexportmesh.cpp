@@ -227,18 +227,18 @@ static QgsInterval datasetRelativetime( const QVariant parameterTimeVariant, Qgs
   QDateTime layerReferenceTime = static_cast<QgsMeshLayerTemporalProperties *>( meshLayer->temporalProperties() )->referenceTime();
   QString timeType = QgsProcessingParameterMeshDatasetTime::valueAsTimeType( parameterTimeVariant );
 
-  if ( timeType == QStringLiteral( "dataset-time-step" ) )
+  if ( timeType == QLatin1String( "dataset-time-step" ) )
   {
     QgsMeshDatasetIndex datasetIndex = QgsProcessingParameterMeshDatasetTime::timeValueAsDatasetIndex( parameterTimeVariant );
     relativeTime = meshLayer->datasetRelativeTime( datasetIndex );
   }
-  else if ( timeType == QStringLiteral( "defined-date-time" ) )
+  else if ( timeType == QLatin1String( "defined-date-time" ) )
   {
     QDateTime dateTime = QgsProcessingParameterMeshDatasetTime::timeValueAsDefinedDateTime( parameterTimeVariant );
     if ( dateTime.isValid() )
       relativeTime = QgsInterval( layerReferenceTime.secsTo( dateTime ) );
   }
-  else if ( timeType == QStringLiteral( "current-context-time" ) )
+  else if ( timeType == QLatin1String( "current-context-time" ) )
   {
     QDateTime dateTime = context.currentTimeRange().begin();
     if ( dateTime.isValid() )
@@ -364,7 +364,7 @@ QVariantMap QgsExportMeshOnElement::processAlgorithm( const QVariantMap &paramet
     {
       geom.transform( mTransform );
     }
-    catch ( QgsCsException &e )
+    catch ( QgsCsException & )
     {
       geom = meshElement( i );
       feedback->reportError( QObject::tr( "Could not transform point to destination CRS" ) );
@@ -666,7 +666,7 @@ QVariantMap QgsExportMeshOnGridAlgorithm::processAlgorithm( const QVariantMap &p
         {
           geom.transform( mTransform );
         }
-        catch ( QgsCsException &e )
+        catch ( QgsCsException & )
         {
           geom = QgsGeometry( point.clone() );
           feedback->reportError( QObject::tr( "Could not transform point to destination CRS" ) );
@@ -1296,7 +1296,7 @@ QVariantMap QgsMeshExportCrossSection::processAlgorithm( const QVariantMap &para
     {
       line.transform( transform );
     }
-    catch ( QgsCsException &e )
+    catch ( QgsCsException & )
     {
       line = feat.geometry();
       feedback->reportError( QObject::tr( "Could not transform line to mesh CRS" ) );
@@ -1610,7 +1610,7 @@ QVariantMap QgsMeshExportTimeSeries::processAlgorithm( const QVariantMap &parame
     {
       geom.transform( transform );
     }
-    catch ( QgsCsException &e )
+    catch ( QgsCsException & )
     {
       geom = feat.geometry();
       feedback->reportError( QObject::tr( "Could not transform line to mesh CRS" ) );

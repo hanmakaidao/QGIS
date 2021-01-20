@@ -59,6 +59,8 @@
 #include "qgsrasterbandcombobox.h"
 #include "qgsprocessingoutputdestinationwidget.h"
 #include "qgscheckablecombobox.h"
+#include "qgsexpressioncontext.h"
+#include "qgsexpressioncontextutils.h"
 #include <QToolButton>
 #include <QLabel>
 #include <QHBoxLayout>
@@ -1841,10 +1843,11 @@ QgsProcessingExpressionParameterDefinitionWidget::QgsProcessingExpressionParamet
 {
   QVBoxLayout *vlayout = new QVBoxLayout();
   vlayout->setContentsMargins( 0, 0, 0, 0 );
-
   vlayout->addWidget( new QLabel( tr( "Default value" ) ) );
 
   mDefaultLineEdit = new QgsExpressionLineEdit();
+  mDefaultLineEdit->registerExpressionContextGenerator( this );
+
   if ( const QgsProcessingParameterExpression *expParam = dynamic_cast<const QgsProcessingParameterExpression *>( definition ) )
     mDefaultLineEdit->setExpression( QgsProcessingParameters::parameterAsExpression( expParam, expParam->defaultValueForGui(), context ) );
   vlayout->addWidget( mDefaultLineEdit );
@@ -1858,13 +1861,13 @@ QgsProcessingExpressionParameterDefinitionWidget::QgsProcessingExpressionParamet
   if ( const QgsProcessingParameterExpression *expParam = dynamic_cast<const QgsProcessingParameterExpression *>( definition ) )
     initialParent = expParam->parentLayerParameterName();
 
-  if ( auto *lModel = widgetContext.model() )
+  if ( QgsProcessingModelAlgorithm *model = widgetContext.model() )
   {
     // populate combo box with other model input choices
-    const QMap<QString, QgsProcessingModelParameter> components = lModel->parameterComponents();
+    const QMap<QString, QgsProcessingModelParameter> components = model->parameterComponents();
     for ( auto it = components.constBegin(); it != components.constEnd(); ++it )
     {
-      if ( const QgsProcessingParameterFeatureSource *definition = dynamic_cast< const QgsProcessingParameterFeatureSource * >( lModel->parameterDefinition( it.value().parameterName() ) ) )
+      if ( const QgsProcessingParameterFeatureSource *definition = dynamic_cast< const QgsProcessingParameterFeatureSource * >( model->parameterDefinition( it.value().parameterName() ) ) )
       {
         mParentLayerComboBox-> addItem( definition->description(), definition->name() );
         if ( !initialParent.isEmpty() && initialParent == definition->name() )
@@ -1872,7 +1875,7 @@ QgsProcessingExpressionParameterDefinitionWidget::QgsProcessingExpressionParamet
           mParentLayerComboBox->setCurrentIndex( mParentLayerComboBox->count() - 1 );
         }
       }
-      else if ( const QgsProcessingParameterVectorLayer *definition = dynamic_cast< const QgsProcessingParameterVectorLayer * >( lModel->parameterDefinition( it.value().parameterName() ) ) )
+      else if ( const QgsProcessingParameterVectorLayer *definition = dynamic_cast< const QgsProcessingParameterVectorLayer * >( model->parameterDefinition( it.value().parameterName() ) ) )
       {
         mParentLayerComboBox-> addItem( definition->description(), definition->name() );
         if ( !initialParent.isEmpty() && initialParent == definition->name() )
@@ -3907,6 +3910,17 @@ QgsProcessingFieldParameterDefinitionWidget::QgsProcessingFieldParameterDefiniti
           mParentLayerComboBox->setCurrentIndex( mParentLayerComboBox->count() - 1 );
         }
       }
+      else if ( const QgsProcessingParameterMultipleLayers *definition = dynamic_cast< const QgsProcessingParameterMultipleLayers * >( lModel->parameterDefinition( it.value().parameterName() ) ) )
+      {
+        if ( definition->layerType() == QgsProcessing::TypeVector )
+        {
+          mParentLayerComboBox-> addItem( definition->description(), definition->name() );
+          if ( !initialParent.isEmpty() && initialParent == definition->name() )
+          {
+            mParentLayerComboBox->setCurrentIndex( mParentLayerComboBox->count() - 1 );
+          }
+        }
+      }
     }
   }
 
@@ -4083,9 +4097,48 @@ void QgsProcessingFieldWidgetWrapper::setParentLayerWrapperValue( const QgsAbstr
     QgsProcessingFeatureSourceDefinition fromVar = qvariant_cast<QgsProcessingFeatureSourceDefinition>( value );
     value = fromVar.source;
   }
-  QgsVectorLayer *layer = QgsProcessingParameters::parameterAsVectorLayer( parentWrapper->parameterDefinition(), value, *context );
-  if ( layer && layer->isValid() )
+
+  bool valueSet = false;
+  const QList< QgsMapLayer * > layers = QgsProcessingParameters::parameterAsLayerList( parentWrapper->parameterDefinition(), value, *context );
+
+  // several layers, populate with intersection of layers fields
+  if ( layers.count() > 1 )
   {
+    QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( layers.at( 0 ) );
+    QgsFields fields = vlayer && vlayer->isValid() ? vlayer->fields() : QgsFields();
+    const  QList< QgsMapLayer * > remainingLayers = layers.mid( 1 );
+    for ( QgsMapLayer *layer : remainingLayers )
+    {
+      if ( fields.isEmpty() )
+        break;
+
+      QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( layer );
+      if ( !vlayer || !vlayer->isValid() )
+      {
+        fields = QgsFields();
+        break;
+      }
+
+      for ( int fieldIdx = fields.count() - 1; fieldIdx >= 0; fieldIdx-- )
+      {
+        if ( vlayer->fields().lookupField( fields.at( fieldIdx ).name() ) < 0 )
+          fields.remove( fieldIdx );
+      }
+    }
+
+    if ( mComboBox )
+      mComboBox->setFields( fields );
+    else if ( mPanel )
+      mPanel->setFields( filterFields( fields ) );
+
+    valueSet = true;
+  }
+
+  // only one layer
+  if ( !valueSet && !layers.isEmpty() && layers.at( 0 )->isValid() )
+  {
+    QgsVectorLayer *layer = qobject_cast< QgsVectorLayer * >( layers.at( 0 ) );
+
     // need to grab ownership of layer if required - otherwise layer may be deleted when context
     // goes out of scope
     std::unique_ptr< QgsMapLayer > ownedLayer( context->takeResultLayer( layer->id() ) );
@@ -4103,8 +4156,11 @@ void QgsProcessingFieldWidgetWrapper::setParentLayerWrapperValue( const QgsAbstr
       mComboBox->setLayer( layer );
     else if ( mPanel )
       mPanel->setFields( filterFields( layer->fields() ) );
+
+    valueSet = true;
   }
-  else
+
+  if ( !valueSet )
   {
     std::unique_ptr< QgsProcessingFeatureSource > source( QgsProcessingParameters::parameterAsSource( parentWrapper->parameterDefinition(), value, *context ) );
     if ( source )
@@ -4114,20 +4170,23 @@ void QgsProcessingFieldWidgetWrapper::setParentLayerWrapperValue( const QgsAbstr
         mComboBox->setFields( fields );
       else if ( mPanel )
         mPanel->setFields( filterFields( fields ) );
-    }
-    else
-    {
-      if ( mComboBox )
-        mComboBox->setLayer( nullptr );
-      else if ( mPanel )
-        mPanel->setFields( QgsFields() );
 
-      if ( value.isValid() && widgetContext().messageBar() )
-      {
-        widgetContext().messageBar()->clearWidgets();
-        widgetContext().messageBar()->pushMessage( QString(), QObject::tr( "Could not load selected layer/table. Dependent field could not be populated" ),
-            Qgis::Info );
-      }
+      valueSet = true;
+    }
+  }
+
+  if ( !valueSet )
+  {
+    if ( mComboBox )
+      mComboBox->setLayer( nullptr );
+    else if ( mPanel )
+      mPanel->setFields( QgsFields() );
+
+    if ( value.isValid() && widgetContext().messageBar() )
+    {
+      widgetContext().messageBar()->clearWidgets();
+      widgetContext().messageBar()->pushMessage( QString(), QObject::tr( "Could not load selected layer/table. Dependent field could not be populated" ),
+          Qgis::Info );
     }
     return;
   }
@@ -6427,6 +6486,14 @@ void QgsProcessingMultipleLayerPanelWidget::setValue( const QVariant &value )
 void QgsProcessingMultipleLayerPanelWidget::setProject( QgsProject *project )
 {
   mProject = project;
+  connect( mProject, &QgsProject::layerRemoved, this, [&]( const QString & layerId )
+  {
+    if ( mValue.removeAll( layerId ) )
+    {
+      updateSummaryText();
+      emit changed();
+    }
+  } );
 }
 
 void QgsProcessingMultipleLayerPanelWidget::setModel( QgsProcessingModelAlgorithm *model, const QString &modelChildAlgorithmID )

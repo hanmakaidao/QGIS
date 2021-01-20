@@ -554,6 +554,21 @@ Sets the camera lens' field of view
 
 
 
+
+    double cameraMovementSpeed() const;
+%Docstring
+Returns the camera movement speed
+
+.. versionadded:: 3.18
+%End
+
+    void setCameraMovementSpeed( double movementSpeed );
+%Docstring
+Sets the camera movement speed
+
+.. versionadded:: 3.18
+%End
+
     void setOutputDpi( const double dpi );
 %Docstring
 Sets DPI used for conversion between real world units (e.g. mm) and pixels
@@ -592,6 +607,24 @@ Sets whether the skybox is enabled.
 .. seealso:: :py:func:`isSkyboxEnabled`
 
 .. versionadded:: 3.16
+%End
+
+    bool isFpsCounterEnabled() const;
+%Docstring
+Returns whether FPS counter label is enabled
+
+.. seealso:: :py:func:`setIsFpsCounterEnabled`
+
+.. versionadded:: 3.18
+%End
+
+    void setIsFpsCounterEnabled( bool fpsCounterEnabled );
+%Docstring
+Sets whether FPS counter label is enabled
+
+.. seealso:: :py:func:`isFpsCounterEnabled`
+
+.. versionadded:: 3.18
 %End
 
   signals:
@@ -768,6 +801,20 @@ Emitted when the camera lens projection type changes
 .. versionadded:: 3.18
 %End
 
+    void cameraNavigationModeChanged();
+%Docstring
+Emitted when the camera navigation mode was changed
+
+.. versionadded:: 3.18
+%End
+
+    void cameraMovementSpeedChanged();
+%Docstring
+Emitted when the camera movement speed was changed
+
+.. versionadded:: 3.18
+%End
+
     void skyboxSettingsChanged();
 %Docstring
 Emitted when skybox settings are changed
@@ -780,6 +827,13 @@ Emitted when skybox settings are changed
 Emitted when shadow rendering settings are changed
 
 .. versionadded:: 3.16
+%End
+
+    void fpsCounterEnabledChanged( bool fpsCounterEnabled );
+%Docstring
+Emitted when the FPS counter is enabled or disabled
+
+.. versionadded:: 3.18
 %End
 
   private:

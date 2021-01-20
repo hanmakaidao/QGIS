@@ -73,6 +73,7 @@
 #include "qgsabstractvaliditycheck.h"
 #include "qgsvaliditycheckcontext.h"
 #include "qgsprojectviewsettings.h"
+#include "qgslayoutlabelwidget.h"
 #include "ui_defaults.h"
 
 #include <QShortcut>
@@ -416,6 +417,40 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
   //..and listen out for new item types
   connect( QgsGui::layoutItemGuiRegistry(), &QgsLayoutItemGuiRegistry::typeAdded, this, &QgsLayoutDesignerDialog::itemTypeAdded );
 
+  mDynamicTextMenu = new QMenu( tr( "Add Dynamic Text" ), this );
+
+  connect( mDynamicTextMenu, &QMenu::aboutToShow, this, [ = ]
+  {
+    mDynamicTextMenu->clear();
+    // we need to rebuild this on each show, as the content varies depending on other available items...
+    QgsLayoutLabelWidget::buildInsertDynamicTextMenu( mLayout, mDynamicTextMenu, [ = ]( const QString & expression )
+    {
+      activateNewItemCreationTool( QgsGui::layoutItemGuiRegistry()->metadataIdForItemType( QgsLayoutItemRegistry::LayoutLabel ), false );
+      QVariantMap properties;
+      properties.insert( QStringLiteral( "expression" ), expression );
+      mAddItemTool->setCustomProperties( properties );
+    } );
+  } );
+
+  // not so nice hack to insert dynamic text menu near the label item
+  int index = 0;
+  for ( QAction *action : mItemMenu->actions() )
+  {
+    if ( action->data().isValid() && QgsGui::layoutItemGuiRegistry()->itemMetadata( action->data().toInt() )->type() == QgsLayoutItemRegistry::LayoutLabel )
+    {
+      if ( QAction *before = mItemMenu->actions().value( index + 1 ) )
+      {
+        mItemMenu->insertMenu( before, mDynamicTextMenu );
+      }
+      else
+      {
+        mItemMenu->addMenu( mDynamicTextMenu );
+      }
+      break;
+    }
+    index++;
+  }
+
   QToolButton *orderingToolButton = new QToolButton( this );
   orderingToolButton->setPopupMode( QToolButton::InstantPopup );
   orderingToolButton->setAutoRaise( true );
@@ -689,6 +724,16 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
   connect( mActionUnlockAll, &QAction::triggered, this, &QgsLayoutDesignerDialog::unlockAllItems );
   connect( mActionLockItems, &QAction::triggered, this, &QgsLayoutDesignerDialog::lockSelectedItems );
 
+  QStringList docksTitle = settings.value( QStringLiteral( "LayoutDesigner/hiddenDocksTitle" ), QStringList(), QgsSettings::App ).toStringList();
+  QStringList docksActive = settings.value( QStringLiteral( "LayoutDesigner/hiddenDocksActive" ), QStringList(), QgsSettings::App ).toStringList();
+  if ( !docksTitle.isEmpty() )
+  {
+    for ( const auto &title : docksTitle )
+    {
+      mPanelStatus.insert( title, PanelStatus( true, docksActive.contains( title ) ) );
+    }
+  }
+  mActionHidePanels->setChecked( !docksTitle.isEmpty() );
   connect( mActionHidePanels, &QAction::toggled, this, &QgsLayoutDesignerDialog::setPanelVisibility );
 
   connect( mActionDeleteSelection, &QAction::triggered, this, [ = ]
@@ -938,6 +983,31 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
   connect( mView, &QgsLayoutView::statusMessage, this, &QgsLayoutDesignerDialog::statusMessageReceived );
 
   connect( QgsProject::instance(), &QgsProject::isDirtyChanged, this, &QgsLayoutDesignerDialog::updateWindowTitle );
+}
+
+QgsLayoutDesignerDialog::~QgsLayoutDesignerDialog()
+{
+  QgsSettings settings;
+  if ( !mPanelStatus.isEmpty() )
+  {
+    QStringList docksTitle;
+    QStringList docksActive;
+
+    for ( const auto &panel : mPanelStatus.toStdMap() )
+    {
+      if ( panel.second.isVisible )
+        docksTitle << panel.first;
+      if ( panel.second.isActive )
+        docksActive << panel.first;
+    }
+    settings.setValue( QStringLiteral( "LayoutDesigner/hiddenDocksTitle" ), docksTitle, QgsSettings::App );
+    settings.setValue( QStringLiteral( "LayoutDesigner/hiddenDocksActive" ), docksActive, QgsSettings::App );
+  }
+  else
+  {
+    settings.remove( QStringLiteral( "LayoutDesigner/hiddenDocksTitle" ), QgsSettings::App );
+    settings.remove( QStringLiteral( "LayoutDesigner/hiddenDocksActive" ), QgsSettings::App );
+  }
 }
 
 QgsAppLayoutDesignerInterface *QgsLayoutDesignerDialog::iface()
@@ -1364,7 +1434,6 @@ void QgsLayoutDesignerDialog::setPanelVisibility( bool hidden )
   {
     mPanelStatus.clear();
     //record status of all docks
-
     for ( QDockWidget *dock : docks )
     {
       mPanelStatus.insert( dock->windowTitle(), PanelStatus( dock->isVisible(), false ) );
@@ -1383,12 +1452,10 @@ void QgsLayoutDesignerDialog::setPanelVisibility( bool hidden )
     //restore visibility of all docks
     for ( QDockWidget *dock : docks )
     {
-      if ( ! mPanelStatus.contains( dock->windowTitle() ) )
+      if ( mPanelStatus.contains( dock->windowTitle() ) )
       {
-        dock->setVisible( true );
-        continue;
+        dock->setVisible( mPanelStatus.value( dock->windowTitle() ).isVisible );
       }
-      dock->setVisible( mPanelStatus.value( dock->windowTitle() ).isVisible );
     }
 
     //restore previously active dock tabs
@@ -1398,12 +1465,13 @@ void QgsLayoutDesignerDialog::setPanelVisibility( bool hidden )
       for ( int i = 0; i < tabBar->count(); ++i )
       {
         QString tabTitle = tabBar->tabText( i );
-        if ( mPanelStatus.value( tabTitle ).isActive )
+        if ( mPanelStatus.contains( tabTitle ) && mPanelStatus.value( tabTitle ).isActive )
         {
           tabBar->setCurrentIndex( i );
         }
       }
     }
+    mPanelStatus.clear();
   }
 }
 
@@ -1581,12 +1649,66 @@ void QgsLayoutDesignerDialog::itemTypeAdded( int id )
   if ( itemSubmenu )
     itemSubmenu->addAction( action );
   else
-    mItemMenu->addAction( action );
+  {
+    // a not nice hack to manually place 3d layout map entry in the right place
+    if ( QgsGui::layoutItemGuiRegistry()->itemMetadata( id )->type() == QgsLayoutItemRegistry::Layout3DMap )
+    {
+      // find position of normal add map action
+      int index = 0;
+      for ( QAction *existingAction : mItemMenu->actions() )
+      {
+        if ( existingAction->data().isValid() && QgsGui::layoutItemGuiRegistry()->itemMetadata( existingAction->data().toInt() )->type() == QgsLayoutItemRegistry::LayoutMap )
+        {
+          if ( QAction *before = mItemMenu->actions().value( index + 1 ) )
+          {
+            mItemMenu->insertAction( before, action );
+          }
+          else
+          {
+            mItemMenu->addAction( action );
+          }
+          break;
+        }
+        index++;
+      }
+    }
+    else
+    {
+      mItemMenu->addAction( action );
+    }
+  }
 
   if ( groupButton )
     groupButton->addAction( action );
   else
-    mToolsToolbar->addAction( action );
+  {
+    // a not nice hack to manually place 3d layout map entry in the right place
+    if ( QgsGui::layoutItemGuiRegistry()->itemMetadata( id )->type() == QgsLayoutItemRegistry::Layout3DMap )
+    {
+      // find position of normal add map action
+      int index = 0;
+      for ( QAction *existingAction : mToolsToolbar->actions() )
+      {
+        if ( existingAction->data().isValid() && QgsGui::layoutItemGuiRegistry()->itemMetadata( existingAction->data().toInt() )->type() == QgsLayoutItemRegistry::LayoutMap )
+        {
+          if ( QAction *before = mToolsToolbar->actions().value( index + 1 ) )
+          {
+            mToolsToolbar->insertAction( before, action );
+          }
+          else
+          {
+            mToolsToolbar->addAction( action );
+          }
+          break;
+        }
+        index++;
+      }
+    }
+    else
+    {
+      mToolsToolbar->addAction( action );
+    }
+  }
 
   connect( action, &QAction::triggered, this, [this, id, nodeBased]()
   {

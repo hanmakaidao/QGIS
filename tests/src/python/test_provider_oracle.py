@@ -26,6 +26,7 @@ from qgis.core import (
     QgsWkbTypes,
     QgsDataProvider,
     QgsVectorLayerExporter,
+    QgsField,
     QgsFields,
     QgsCoordinateReferenceSystem
 )
@@ -823,19 +824,67 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(attributes, [[1, 'qgis'], [2, 'test'], [3, 'qgis'], [4, 'test']])
 
     def testCreateEmptyLayer(self):
+
+        # cleanup (it seems overwrite option doesn't clean the sdo_geom_metadata table)
+        self.execSQLCommand('DROP TABLE "QGIS"."EMPTY_LAYER"', ignore_errors=True)
+        self.execSQLCommand("DELETE FROM user_sdo_geom_metadata  where TABLE_NAME='EMPTY_LAYER'", ignore_errors=True)
+
         uri = self.dbconn + "srid=4326 type=POINT table=\"EMPTY_LAYER\" (GEOM)"
         exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=QgsFields(), geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem(4326), overwrite=True)
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
-        # check IF there is an empty table (will throw error if the EMPTY_LAYER table does not excist)
+
+        # check IF there is an empty table (will throw error if the EMPTY_LAYER table does not exist)
         self.execSQLCommand('SELECT count(*) FROM "QGIS"."EMPTY_LAYER"')
+
+        # check that metadata table has been correctly populated
+        query = QSqlQuery(self.conn)
+        self.assertTrue(query.exec_("SELECT column_name, srid FROM user_sdo_geom_metadata WHERE table_name = 'EMPTY_LAYER'"))
+        self.assertTrue(query.next())
+        self.assertEqual(query.value(0), "GEOM")
+        self.assertEqual(query.value(1), 4326)
+        query.finish()
+
         vl = QgsVectorLayer(
             self.dbconn + ' sslmode=disable table="QGIS"."EMPTY_LAYER" sql=',
             'test', 'oracle')
         self.assertTrue(vl.isValid())
-        # cleanup
-        self.execSQLCommand('DROP TABLE "QGIS"."EMPTY_LAYER"')
-        self.execSQLCommand("DELETE FROM user_sdo_geom_metadata  where TABLE_NAME='EMPTY_LAYER'")
+
+    def testCreateAspatialLayer(self):
+        """
+        Test creation of a non-spatial layer
+        """
+
+        # cleanup (it seems overwrite option doesn't clean the sdo_geom_metadata table)
+        self.execSQLCommand('DROP TABLE "QGIS"."ASPATIAL_LAYER"', ignore_errors=True)
+
+        fields = QgsFields()
+        fields.append(QgsField("INTEGER_T", QVariant.Int))
+
+        uri = self.dbconn + "table=\"ASPATIAL_LAYER\""
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
+        self.assertEqual(exporter.errorCount(), 0)
+        self.assertEqual(exporter.errorCode(), 0)
+
+        self.execSQLCommand('SELECT count(*) FROM "QGIS"."ASPATIAL_LAYER"')
+        vl = QgsVectorLayer(self.dbconn + ' sslmode=disable table="QGIS"."ASPATIAL_LAYER" sql=', 'test', 'oracle')
+        self.assertTrue(vl.isValid())
+
+        self.assertEqual(vl.fields().names(), ["INTEGER_T"])
+
+    def testCreateInvalidLayer(self):
+        """
+        Test creation of an invalid layer (no geometry, no column)
+        """
+
+        # cleanup (it seems overwrite option doesn't clean the sdo_geom_metadata table)
+        self.execSQLCommand('DROP TABLE "QGIS"."INVALID_LAYER"', ignore_errors=True)
+
+        fields = QgsFields()
+
+        uri = self.dbconn + "table=\"INVALID_LAYER\""
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
+        self.assertEqual(exporter.errorCode(), QgsVectorLayerExporter.ErrCreateDataSource)
 
 
 if __name__ == '__main__':

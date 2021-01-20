@@ -665,6 +665,9 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
     mLayerRestrictionsListWidget->addItems( values );
   }
 
+  bool useAttributeFormSettings = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSFeatureInfoUseAttributeFormSettings" ), QStringLiteral( "/" ) );
+  mUseAttributeFormSettingsCheckBox->setChecked( useAttributeFormSettings );
+
   bool addWktGeometry = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSAddWktGeometry" ), QStringLiteral( "/" ) );
   mAddWktGeometryCheckBox->setChecked( addWktGeometry );
 
@@ -1393,6 +1396,7 @@ void QgsProjectProperties::apply()
     QgsProject::instance()->removeEntry( QStringLiteral( "WMSRestrictedLayers" ), QStringLiteral( "/" ) );
   }
 
+  QgsProject::instance()->writeEntry( QStringLiteral( "WMSFeatureInfoUseAttributeFormSettings" ), QStringLiteral( "/" ), mUseAttributeFormSettingsCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSAddWktGeometry" ), QStringLiteral( "/" ), mAddWktGeometryCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSSegmentizeFeatureInfoGeometry" ), QStringLiteral( "/" ), mSegmentizeFeatureInfoGeometryCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSUseLayerIDs" ), QStringLiteral( "/" ), mWmsUseLayerIDs->isChecked() );
@@ -2639,9 +2643,11 @@ void QgsProjectProperties::onGenerateTsFileButton() const
   QMessageBox::information( nullptr, tr( "General TS file generated" ), tr( "TS file generated with source language %1.\n"
                             "- open it with Qt Linguist\n"
                             "- translate strings\n"
-                            "- save it with the postfix of the target language (eg. de)\n"
-                            "- release to get qm file including postfix (eg. aproject_de.qm)\n"
-                            "When you open it again in QGIS having set the target language (de), the project will be translated and saved with postfix (eg. aproject_de.qgs)." ).arg( l ) ) ;
+                            "- save the TS file with the suffix of the target language (e.g. _de.ts)\n"
+                            "- release to get the QM file including the suffix (e.g. aproject_de.qm)\n"
+                            "- open the original QGIS file (e.g. aproject.qgs)\n"
+                            "- if your QGIS is set to use a specific language and the QM file for that language is found, the translated QGIS project will be generated on the fly.\n"
+                            "- you will be redirected to this new project (e.g. aproject_de.qgs)." ).arg( l ) ) ;
 }
 
 void QgsProjectProperties::customizeBearingFormat()

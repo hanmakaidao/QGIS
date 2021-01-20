@@ -34,6 +34,8 @@
 #include "qgsmultibandcolorrendererwidget.h"
 #include "qgsnative.h"
 #include "qgspalettedrendererwidget.h"
+#include "qgsprovidersourcewidgetproviderregistry.h"
+#include "qgsprovidersourcewidget.h"
 #include "qgsproject.h"
 #include "qgsrasterbandstats.h"
 #include "qgsrastercontourrendererwidget.h"
@@ -128,6 +130,8 @@ QgsRasterLayerProperties::QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanv
 
   if ( mRasterLayer && mRasterLayer->temporalProperties() )
     connect( mRasterLayer->temporalProperties(), &QgsRasterLayerTemporalProperties::changed, this, &QgsRasterLayerProperties::temporalPropertiesChange );
+
+  mSourceGroupBox->hide();
 
   mBtnStyle = new QPushButton( tr( "Style" ) );
   QMenu *menuStyle = new QMenu( this );
@@ -714,18 +718,30 @@ void QgsRasterLayerProperties::setRendererWidget( const QString &rendererName )
   }
 }
 
-/**
-  \note moved from ctor
-
-  Previously this dialog was created anew with each right-click pop-up menu
-  invocation.  Changed so that the dialog always exists after first
-  invocation, and is just re-synchronized with its layer's state when
-  re-shown.
-
-*/
 void QgsRasterLayerProperties::sync()
 {
   QgsSettings myQSettings;
+
+  if ( !mSourceWidget )
+  {
+    mSourceWidget = QgsGui::sourceWidgetProviderRegistry()->createWidget( mRasterLayer );
+    if ( mSourceWidget )
+    {
+      QHBoxLayout *layout = new QHBoxLayout();
+      layout->addWidget( mSourceWidget );
+      mSourceGroupBox->setLayout( layout );
+      mSourceGroupBox->show();
+
+      connect( mSourceWidget, &QgsProviderSourceWidget::validChanged, this, [ = ]( bool isValid )
+      {
+        buttonBox->button( QDialogButtonBox::Apply )->setEnabled( isValid );
+        buttonBox->button( QDialogButtonBox::Ok )->setEnabled( isValid );
+      } );
+    }
+  }
+
+  if ( mSourceWidget )
+    mSourceWidget->setSourceUri( mRasterLayer->source() );
 
   const QgsRasterDataProvider *provider = mRasterLayer->dataProvider();
   if ( !provider )
@@ -856,24 +872,6 @@ void QgsRasterLayerProperties::sync()
   mLayerOrigNameLineEd->setText( mRasterLayer->name() );
   leDisplayName->setText( mRasterLayer->name() );
 
-  //get the thumbnail for the layer
-  QPixmap thumbnail = QPixmap::fromImage( mRasterLayer->previewAsImage( pixmapThumbnail->size() ) );
-  pixmapThumbnail->setPixmap( thumbnail );
-
-  // TODO fix legend + palette pixmap
-
-  //update the legend pixmap on this dialog
-#if 0
-  pixmapLegend->setPixmap( mRasterLayer->legendAsPixmap() );
-  pixmapLegend->setScaledContents( true );
-  pixmapLegend->repaint();
-
-  //set the palette pixmap
-  pixmapPalette->setPixmap( mRasterLayer->paletteAsPixmap( mRasterLayer->bandNumber( mRasterLayer->grayBandName() ) ) );
-  pixmapPalette->setScaledContents( true );
-  pixmapPalette->repaint();
-#endif
-
   QgsDebugMsgLevel( QStringLiteral( "populate metadata tab" ), 2 );
   /*
    * Metadata Tab
@@ -936,6 +934,14 @@ void QgsRasterLayerProperties::sync()
 
 void QgsRasterLayerProperties::apply()
 {
+  if ( mSourceWidget )
+  {
+    const QString newSource = mSourceWidget->sourceUri();
+    if ( newSource != mRasterLayer->source() )
+    {
+      mRasterLayer->setDataSource( newSource, mRasterLayer->name(), mRasterLayer->providerType(), QgsDataProvider::ProviderOptions() );
+    }
+  }
 
   // Do nothing on "bad" layers
   if ( !mRasterLayer->isValid() )
@@ -1112,10 +1118,6 @@ void QgsRasterLayerProperties::apply()
   mTemporalWidget->saveTemporalProperties();
 
   mRasterLayer->setCrs( mCrsSelector->crs() );
-
-  //get the thumbnail for the layer
-  QPixmap thumbnail = QPixmap::fromImage( mRasterLayer->previewAsImage( pixmapThumbnail->size() ) );
-  pixmapThumbnail->setPixmap( thumbnail );
 
   if ( mRasterLayer->shortName() != mLayerShortNameLineEdit->text() )
     mMetadataFilled = false;

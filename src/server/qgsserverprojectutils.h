@@ -68,7 +68,7 @@ namespace QgsServerProjectUtils
   /**
    * Returns the owsService title defined in project.
    * \param project the QGIS project
-   * \returns the owsService title if defined in project.
+   * \returns the owsService title if defined in project with project title as fallback, "Untitled" otherwise.
    */
   SERVER_EXPORT QString owsServiceTitle( const QgsProject &project );
 
@@ -206,6 +206,13 @@ namespace QgsServerProjectUtils
    * \returns if the geometry is displayed as Well Known Text in GetFeatureInfo request.
    */
   SERVER_EXPORT bool wmsFeatureInfoAddWktGeometry( const QgsProject &project );
+
+  /**
+    * Returns if feature form settings should be considered for the format of the feature info response
+    * \param project the QGIS project
+    * \returns true if the feature form settings shall be considered for the feature info response
+   */
+  SERVER_EXPORT bool wmsFeatureInfoUseAttributeFormSettings( const QgsProject &project );
 
   /**
    * Returns if the geometry has to be segmentize in GetFeatureInfo request.

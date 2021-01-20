@@ -176,10 +176,10 @@ class TestPyQgsProviderConnectionBase():
             self.assertTrue('myNewTable' in table_names)
 
             # insert something, because otherwise MSSQL cannot guess
-            if self.providerKey == 'mssql':
+            if self.providerKey in ['hana', 'mssql']:
                 f = QgsFeature(fields)
                 f.setGeometry(QgsGeometry.fromWkt('LineString (-72.345 71.987, -80 80)'))
-                vl = QgsVectorLayer(conn.tableUri('myNewSchema', 'myNewTable'), 'vl', 'mssql')
+                vl = QgsVectorLayer(conn.tableUri('myNewSchema', 'myNewTable'), 'vl', self.providerKey)
                 vl.dataProvider().addFeatures([f])
 
             # Check table information
@@ -221,15 +221,44 @@ class TestPyQgsProviderConnectionBase():
                     table = 'myNewAspatialTable'
 
                 # MSSQL literal syntax for UTF8 requires 'N' prefix
-                sql = "INSERT INTO %s (string_t, long_t, double_t, integer_t, date_t, datetime_t, time_t) VALUES (%s'QGIS Rocks - \U0001f604', 666, 1.234, 1234, '2019-07-08', '2019-07-08T12:00:12', '12:00:13.00')" % (
+                sql = "INSERT INTO %s (\"string_t\", \"long_t\", \"double_t\", \"integer_t\", \"date_t\", \"datetime_t\", \"time_t\") VALUES (%s'QGIS Rocks - \U0001f604', 666, 1.234, 1234, '2019-07-08', '2019-07-08T12:00:12', '12:00:13.00')" % (
                     table, 'N' if self.providerKey == 'mssql' else '')
                 res = conn.executeSql(sql)
                 self.assertEqual(res, [])
-                sql = "SELECT string_t, long_t, double_t, integer_t, date_t, datetime_t FROM %s" % table
+                sql = "SELECT \"string_t\", \"long_t\", \"double_t\", \"integer_t\", \"date_t\", \"datetime_t\" FROM %s" % table
                 res = conn.executeSql(sql)
+
                 # GPKG and spatialite have no type for time
                 self.assertEqual(res, [['QGIS Rocks - \U0001f604', 666, 1.234, 1234, QtCore.QDate(2019, 7, 8) if not self.treat_date_as_string() else '2019-07-08', QtCore.QDateTime(2019, 7, 8, 12, 0, 12)]])
-                sql = "SELECT time_t FROM %s" % table
+
+                # Test column names
+                res = conn.execSql(sql)
+                rows = res.rows()
+                self.assertEqual(rows, [['QGIS Rocks - \U0001f604', 666, 1.234, 1234, QtCore.QDate(2019, 7, 8) if not self.treat_date_as_string() else '2019-07-08', QtCore.QDateTime(2019, 7, 8, 12, 0, 12)]])
+                self.assertEqual(res.columns(), ['string_t', 'long_t', 'double_t', 'integer_t', 'date_t', 'datetime_t'])
+
+                # Test iterator
+                old_rows = rows
+                res = conn.execSql(sql)
+                rows = []
+                self.assertTrue(res.hasNextRow())
+
+                for row in res:
+                    rows.append(row)
+
+                self.assertEqual(rows, old_rows)
+
+                # Java style
+                res = conn.execSql(sql)
+                rows = []
+                self.assertTrue(res.hasNextRow())
+                while res.hasNextRow():
+                    rows.append(res.nextRow())
+
+                self.assertFalse(res.hasNextRow())
+
+                # Test time_t
+                sql = "SELECT \"time_t\" FROM %s" % table
                 res = conn.executeSql(sql)
 
                 # This does not work in MSSQL and returns a QByteArray, we have no way to know that it is a time
@@ -237,11 +266,11 @@ class TestPyQgsProviderConnectionBase():
                 if self.providerKey != 'mssql':
                     self.assertIn(res, ([[QtCore.QTime(12, 0, 13)]], [['12:00:13.00']]))
 
-                sql = "DELETE FROM %s WHERE string_t = %s'QGIS Rocks - \U0001f604'" % (
+                sql = "DELETE FROM %s WHERE \"string_t\" = %s'QGIS Rocks - \U0001f604'" % (
                     table, 'N' if self.providerKey == 'mssql' else '')
                 res = conn.executeSql(sql)
                 self.assertEqual(res, [])
-                sql = "SELECT string_t, integer_t FROM %s" % table
+                sql = "SELECT \"string_t\", \"integer_t\" FROM %s" % table
                 res = conn.executeSql(sql)
                 self.assertEqual(res, [])
 
@@ -251,7 +280,7 @@ class TestPyQgsProviderConnectionBase():
             self.assertFalse('myNewAspatialTable' in table_names)
 
             # Query for rasters (in qgis_test schema or no schema for GPKG, spatialite has no support)
-            if self.providerKey not in ('spatialite', 'mssql'):
+            if self.providerKey not in ('spatialite', 'mssql', 'hana'):
                 table_properties = conn.tables('qgis_test', QgsAbstractDatabaseProviderConnection.Raster)
                 # At least one raster should be there (except for spatialite)
                 self.assertTrue(len(table_properties) >= 1)
@@ -287,13 +316,13 @@ class TestPyQgsProviderConnectionBase():
                 if capabilities & QgsAbstractDatabaseProviderConnection.SpatialIndexExists:
                     self.assertFalse(conn.spatialIndexExists('myNewSchema', 'myNewTable', 'geom'))
 
-            if capabilities & QgsAbstractDatabaseProviderConnection.CreateSpatialIndex:
+            if capabilities & (QgsAbstractDatabaseProviderConnection.CreateSpatialIndex | QgsAbstractDatabaseProviderConnection.SpatialIndexExists):
                 options = QgsAbstractDatabaseProviderConnection.SpatialIndexOptions()
                 options.geometryColumnName = 'geom'
-                conn.createSpatialIndex('myNewSchema', 'myNewTable', options)
+                if not conn.spatialIndexExists('myNewSchema', 'myNewTable', options.geometryColumnName):
+                    conn.createSpatialIndex('myNewSchema', 'myNewTable', options)
 
-                if capabilities & QgsAbstractDatabaseProviderConnection.SpatialIndexExists:
-                    self.assertTrue(conn.spatialIndexExists('myNewSchema', 'myNewTable', 'geom'))
+                self.assertTrue(conn.spatialIndexExists('myNewSchema', 'myNewTable', 'geom'))
 
                 # now we know for certain a spatial index exists, let's retry dropping it
                 if capabilities & QgsAbstractDatabaseProviderConnection.DeleteSpatialIndex:
@@ -414,7 +443,7 @@ class TestPyQgsProviderConnectionBase():
         native_types = conn.nativeTypes()
         names = [nt.mTypeName.lower() for nt in native_types]
         self.assertTrue('integer' in names or 'decimal' in names, names)
-        self.assertTrue('string' in names or 'text' in names, names)
+        self.assertTrue('string' in names or 'text' in names or 'nvarchar' in names, names)
 
     def testExecuteSqlCancel(self):
         """Test that feedback can cancel an executeSql query"""

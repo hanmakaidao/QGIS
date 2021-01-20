@@ -417,11 +417,16 @@ void QgsMapCanvas::setDestinationCrs( const QgsCoordinateReferenceSystem &crs )
 
   if ( !rect.isEmpty() )
   {
+    // we will be manually calling updateCanvasItemPositions() later, AFTER setting the updating the mSettings destination CRS, and we don't
+    // want to do that twice!
+    mBlockItemPositionUpdates++;
     setExtent( rect );
+    mBlockItemPositionUpdates--;
   }
 
   mSettings.setDestinationCrs( crs );
   updateScale();
+  updateCanvasItemPositions();
 
   QgsDebugMsgLevel( QStringLiteral( "refreshing after destination CRS changed" ), 2 );
   refresh();
@@ -1000,6 +1005,7 @@ void QgsMapCanvas::stopRendering()
     connect( mJob, &QgsMapRendererQImageJob::finished, mJob, &QgsMapRendererQImageJob::deleteLater );
     mJob->cancelWithoutBlocking();
     mJob = nullptr;
+    emit mapRefreshCanceled();
   }
   stopPreviewJobs();
 }
@@ -1319,6 +1325,8 @@ QgsRectangle QgsMapCanvas::optimalExtentForPointLayer( QgsVectorLayer *layer, co
 
 void QgsMapCanvas::zoomToSelected( QgsVectorLayer *layer )
 {
+  QgsTemporaryCursorOverride cursorOverride( Qt::WaitCursor );
+
   if ( !layer )
   {
     // use current layer by default
@@ -1331,6 +1339,7 @@ void QgsMapCanvas::zoomToSelected( QgsVectorLayer *layer )
   QgsRectangle rect = layer->boundingBoxOfSelected();
   if ( rect.isNull() )
   {
+    cursorOverride.release();
     emit messageEmitted( tr( "Cannot zoom to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::Warning );
     return;
   }
@@ -1344,6 +1353,42 @@ void QgsMapCanvas::zoomToSelected( QgsVectorLayer *layer )
     rect = optimalExtentForPointLayer( layer, rect.center() );
   }
   zoomToFeatureExtent( rect );
+}
+
+void QgsMapCanvas::zoomToSelected( const QList<QgsMapLayer *> &layers )
+{
+  QgsRectangle rect;
+  rect.setMinimal();
+  QgsRectangle selectionExtent;
+  selectionExtent.setMinimal();
+
+  for ( QgsMapLayer *mapLayer : layers )
+  {
+    QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
+
+    if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+      continue;
+
+    rect = layer->boundingBoxOfSelected();
+
+    if ( rect.isNull() )
+      continue;
+
+    rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+
+    if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
+      rect = optimalExtentForPointLayer( layer, rect.center() );
+
+    selectionExtent.combineExtentWith( rect );
+  }
+
+  if ( selectionExtent.isNull() )
+  {
+    emit messageEmitted( tr( "Cannot zoom to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::Warning );
+    return;
+  }
+
+  zoomToFeatureExtent( selectionExtent );
 }
 
 QgsDoubleRange QgsMapCanvas::zRange() const
@@ -1494,6 +1539,43 @@ void QgsMapCanvas::panToSelected( QgsVectorLayer *layer )
 
   rect = mapSettings().layerExtentToOutputExtent( layer, rect );
   setCenter( rect.center() );
+  refresh();
+}
+
+void QgsMapCanvas::panToSelected( const QList<QgsMapLayer *> &layers )
+{
+  QgsRectangle rect;
+  rect.setMinimal();
+  QgsRectangle selectionExtent;
+  selectionExtent.setMinimal();
+
+  for ( QgsMapLayer *mapLayer : layers )
+  {
+    QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
+
+    if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+      continue;
+
+    rect = layer->boundingBoxOfSelected();
+
+    if ( rect.isNull() )
+      continue;
+
+    rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+
+    if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
+      rect = optimalExtentForPointLayer( layer, rect.center() );
+
+    selectionExtent.combineExtentWith( rect );
+  }
+
+  if ( selectionExtent.isNull() )
+  {
+    emit messageEmitted( tr( "Cannot pan to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::Warning );
+    return;
+  }
+
+  setCenter( selectionExtent.center() );
   refresh();
 }
 
@@ -1919,6 +2001,9 @@ void QgsMapCanvas::paintEvent( QPaintEvent *e )
 
 void QgsMapCanvas::updateCanvasItemPositions()
 {
+  if ( mBlockItemPositionUpdates )
+    return;
+
   const QList<QGraphicsItem *> items = mScene->items();
   for ( QGraphicsItem *gi : items )
   {

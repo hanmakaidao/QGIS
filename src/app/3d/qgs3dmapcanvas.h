@@ -20,6 +20,7 @@
 #include <Qt3DRender/QRenderCapture>
 
 #include "qgsrange.h"
+#include "qgscameracontroller.h"
 
 namespace Qt3DExtras
 {
@@ -30,7 +31,6 @@ class Qgs3DMapSettings;
 class Qgs3DMapScene;
 class Qgs3DMapTool;
 class QgsWindow3DEngine;
-class QgsCameraController;
 class QgsPointXY;
 class Qgs3DNavigationWidget;
 class QgsTemporalController;
@@ -86,6 +86,13 @@ class Qgs3DMapCanvas : public QWidget
      */
     void setTemporalController( QgsTemporalController *temporalController );
 
+    /**
+     * Returns the size of the 3D canvas window
+     *
+     * \since QGIS 3.18
+     */
+    QSize windowSize() const;
+
   signals:
     //! Emitted when the 3D map canvas was successfully saved as image
     void savedAsImage( QString fileName );
@@ -93,8 +100,21 @@ class Qgs3DMapCanvas : public QWidget
     //! Emitted when the the map setting is changed
     void mapSettingsChanged();
 
+    //! Emitted when the FPS count changes (at most every frame)
+    void fpsCountChanged( float fpsCount );
+    //! Emitted when the FPS counter is enabled or disabeld
+    void fpsCounterEnabledChanged( bool enabled );
+
+    /**
+     * Emitted when the camera navigation \a speed is changed.
+     *
+     * \since QGIS 3.18
+     */
+    void cameraNavigationSpeedChanged( double speed );
+
   private slots:
     void updateTemporalRange( const QgsDateTimeRange &timeRange );
+    void onNavigationModeHotKeyPressed( QgsCameraController::NavigationMode mode );
 
   protected:
     void resizeEvent( QResizeEvent *ev ) override;

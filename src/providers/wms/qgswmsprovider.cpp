@@ -1432,6 +1432,40 @@ void QgsWmsProvider::setupXyzCapabilities( const QString &uri, const QgsRectangl
   bbox.crs = mSettings.mCrsId;
   bbox.box = sourceExtent.isNull() ? QgsRectangle( topLeft.x(), bottomRight.y(), bottomRight.x(), topLeft.y() ) : sourceExtent;
 
+  // metadata
+  if ( mSettings.mXyz )
+  {
+    if ( parsedUri.param( QStringLiteral( "url" ) ).contains( QLatin1String( "openstreetmap" ), Qt::CaseInsensitive ) )
+    {
+      mLayerMetadata.setTitle( tr( "OpenStreetMap tiles" ) );
+      mLayerMetadata.setIdentifier( tr( "OpenStreetMap tiles" ) );
+      mLayerMetadata.setAbstract( tr( "OpenStreetMap is built by a community of mappers that contribute and maintain data about roads, trails, cafés, railway stations, and much more, all over the world." ) );
+
+      QStringList licenses;
+      licenses << tr( "Open Data Commons Open Database License (ODbL)" );
+      if ( parsedUri.param( QStringLiteral( "url" ) ).contains( QLatin1String( "tile.openstreetmap.org" ), Qt::CaseInsensitive ) )
+      {
+        // OSM tiles have a different attribution requirement to OpenStreetMap data - see https://www.openstreetmap.org/copyright
+        mLayerMetadata.setRights( QStringList() << tr( "Base map and data from OpenStreetMap and OpenStreetMap Foundation (CC-BY-SA). © https://www.openstreetmap.org and contributors." ) );
+        licenses << tr( "Creative Commons Attribution-ShareAlike (CC-BY-SA)" );
+      }
+      else
+        mLayerMetadata.setRights( QStringList() << tr( "© OpenStreetMap and contributors (https://www.openstreetmap.org/copyright)." ) );
+      mLayerMetadata.setLicenses( licenses );
+
+      QgsLayerMetadata::SpatialExtent spatialExtent;
+      spatialExtent.bounds = QgsBox3d( QgsRectangle( topLeftLonLat.x(), bottomRightLonLat.y(), bottomRightLonLat.x(), topLeftLonLat.y() ) );
+      spatialExtent.extentCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) );
+      QgsLayerMetadata::Extent metadataExtent;
+      metadataExtent.setSpatialExtents( QList<  QgsLayerMetadata::SpatialExtent >() << spatialExtent );
+      mLayerMetadata.setExtent( metadataExtent );
+      mLayerMetadata.setCrs( QgsCoordinateReferenceSystem( "EPSG:3857" ) );
+
+      mLayerMetadata.addLink( QgsAbstractMetadataBase::Link( tr( "Source" ), QStringLiteral( "WWW:LINK" ), QStringLiteral( "https://www.openstreetmap.org/" ) ) );
+    }
+  }
+  mLayerMetadata.setType( QStringLiteral( "dataset" ) );
+
   QgsWmtsTileLayer tl;
   tl.tileMode = XYZ;
   tl.identifier = QStringLiteral( "xyz" );  // as set in parseUri
@@ -3033,7 +3067,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         const QStringList parts = mSettings.mBaseUrl.split( QRegularExpression( "\\?" ) );
         const QString base = parts.isEmpty() ? mSettings.mBaseUrl : parts.first();
         // and strip everything before the `rest` element (at least for GeoServer)
-        const int index = url.length() - url.lastIndexOf( QStringLiteral( "rest" ) ) + 1; // +1 for the /
+        const int index = url.length() - url.lastIndexOf( QLatin1String( "rest" ) ) + 1; // +1 for the /
         url = base + url.right( index );
       }
 
@@ -3545,6 +3579,11 @@ QgsCoordinateReferenceSystem QgsWmsProvider::crs() const
   return mCrs;
 }
 
+QgsRasterDataProvider::ProviderCapabilities QgsWmsProvider::providerCapabilities() const
+{
+  return ProviderCapability::ReadLayerMetadata;
+}
+
 QString QgsWmsProvider::lastErrorTitle()
 {
   return mErrorCaption;
@@ -3587,6 +3626,11 @@ bool QgsWmsProvider::renderInPreview( const QgsDataProvider::PreviewContext &con
 QList<double> QgsWmsProvider::nativeResolutions() const
 {
   return mNativeResolutions;
+}
+
+QgsLayerMetadata QgsWmsProvider::layerMetadata() const
+{
+  return mLayerMetadata;
 }
 
 QVector<QgsWmsSupportedFormat> QgsWmsProvider::supportedFormats()
@@ -4644,7 +4688,22 @@ QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri ) const
   QVariantMap decoded;
   for ( const auto &item : constItems )
   {
-    decoded[ item.first ] = item.second;
+    if ( item.first == QLatin1String( "url" ) )
+    {
+      const QUrl url( item.second );
+      if ( url.isLocalFile() )
+      {
+        decoded[ QStringLiteral( "path" ) ] = url.toLocalFile();
+      }
+      else
+      {
+        decoded[ item.first ] = item.second;
+      }
+    }
+    else
+    {
+      decoded[ item.first ] = item.second;
+    }
   }
   return decoded;
 }
@@ -4655,7 +4714,14 @@ QString QgsWmsProviderMetadata::encodeUri( const QVariantMap &parts ) const
   QList<QPair<QString, QString> > items;
   for ( auto it = parts.constBegin(); it != parts.constEnd(); ++it )
   {
-    items.push_back( {it.key(), it.value().toString() } );
+    if ( it.key() == QLatin1String( "path" ) )
+    {
+      items.push_back( { QStringLiteral( "url" ), QUrl::fromLocalFile( it.value().toString() ).toString() } );
+    }
+    else
+    {
+      items.push_back( { it.key(), it.value().toString() } );
+    }
   }
   query.setQueryItems( items );
   return query.toString();

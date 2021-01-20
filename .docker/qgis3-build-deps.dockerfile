@@ -131,6 +131,7 @@ RUN  apt-get update \
     sphinx \
     requests \
     six \
+    hdbcli \
   && apt-get clean
 
 # Oracle : client side
@@ -144,6 +145,16 @@ RUN unzip instantclient-sqlplus-linux.x64-19.3.0.0.0dbru.zip
 
 ENV PATH="/instantclient_19_3:${PATH}"
 ENV LD_LIBRARY_PATH="/instantclient_19_3:${LD_LIBRARY_PATH}"
+
+# HANA: client side
+# Install hdbsql tool
+RUN curl -v -j -k -L -H "Cookie: eula_3_1_agreed=tools.hana.ondemand.com/developer-license-3_1.txt" https://tools.hana.ondemand.com/additional/hanaclient-latest-linux-x64.tar.gz --output hanaclient-latest-linux-x64.tar.gz \
+  && tar -xvf hanaclient-latest-linux-x64.tar.gz \
+  && mkdir /usr/sap \
+  && ./client/hdbinst -a client --sapmnt=/usr/sap \
+  && rm -rf client \
+  && rm hanaclient*
+ENV PATH="/usr/sap/hdbclient:${PATH}"
 
 # MSSQL: client side
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -

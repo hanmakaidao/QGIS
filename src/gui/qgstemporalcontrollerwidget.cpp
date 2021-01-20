@@ -59,7 +59,7 @@ QgsTemporalControllerWidget::QgsTemporalControllerWidget( QWidget *parent )
       return;
 
     mBlockFrameDurationUpdates++;
-    setTimeStep( timeStep );
+    updateTimeStepInputs( timeStep );
     mBlockFrameDurationUpdates--;
   } );
   connect( mNavigationOff, &QPushButton::clicked, this, &QgsTemporalControllerWidget::mNavigationOff_clicked );
@@ -297,8 +297,9 @@ void QgsTemporalControllerWidget::updateFrameDuration()
 
   if ( !mBlockFrameDurationUpdates )
   {
-    mNavigationObject->setFrameDuration( QgsInterval( QgsProject::instance()->timeSettings()->timeStep(),
-                                         QgsProject::instance()->timeSettings()->timeStepUnit() ) );
+    mNavigationObject->setFrameDuration(
+      QgsInterval( QgsProject::instance()->timeSettings()->timeStep(),
+                   QgsProject::instance()->timeSettings()->timeStepUnit() ) );
     mSlider->setValue( mNavigationObject->currentFrameNumber() );
   }
   mSlider->setRange( 0, mNavigationObject->totalFrameCount() - 1 );
@@ -574,6 +575,25 @@ void QgsTemporalControllerWidget::setTimeStep( const QgsInterval &timeStep )
   {
     mStepSpinBox->setValue( selectedValue );
     mTimeStepsComboBox->setCurrentIndex( selectedUnit );
+  }
+
+  updateFrameDuration();
+}
+
+void QgsTemporalControllerWidget::updateTimeStepInputs( const QgsInterval &timeStep )
+{
+  if ( ! timeStep.isValid() || timeStep.seconds() <= 0 )
+    return;
+
+  // Only update ui when the intervals are different
+  if ( timeStep == QgsInterval( mStepSpinBox->value(),
+                                static_cast< QgsUnitTypes::TemporalUnit>( mTimeStepsComboBox->currentData().toInt() ) ) )
+    return;
+
+  if ( timeStep.originalUnit() != QgsUnitTypes::TemporalUnknownUnit )
+  {
+    mStepSpinBox->setValue( timeStep.originalDuration() );
+    mTimeStepsComboBox->setCurrentIndex( timeStep.originalUnit() );
   }
 
   updateFrameDuration();

@@ -202,21 +202,6 @@ static std::vector<MDAL::RelativeTimestamp> readTimes( const HdfFile &hdfFile )
   return convertTimeData( times, dataTimeUnits );
 }
 
-static std::vector<int> readFace2Cells( const HdfFile &hdfFile, const std::string &flowAreaName, size_t *nFaces )
-{
-  // First read face to node mapping
-  HdfGroup gGeom = openHdfGroup( hdfFile, "Geometry" );
-  HdfGroup gGeom2DFlowAreas = openHdfGroup( gGeom, "2D Flow Areas" );
-  HdfGroup gArea = openHdfGroup( gGeom2DFlowAreas, flowAreaName );
-  HdfDataset dsFace2Cells = openHdfDataset( gArea, "Faces Cell Indexes" );
-
-  std::vector<hsize_t> fdims = dsFace2Cells.dims();
-  std::vector<int> face2Cells = dsFace2Cells.readArrayInt(); //2x nFaces
-
-  *nFaces = fdims[0];
-  return face2Cells;
-}
-
 void MDAL::DriverHec2D::readFaceOutput( const HdfFile &hdfFile,
                                         const HdfGroup &rootGroup,
                                         const std::vector<size_t> &areaElemStartIndex,
@@ -226,8 +211,6 @@ void MDAL::DriverHec2D::readFaceOutput( const HdfFile &hdfFile,
                                         const std::vector<RelativeTimestamp> &times,
                                         const DateTime &referenceTime )
 {
-  double eps = std::numeric_limits<double>::min();
-
   std::shared_ptr<DatasetGroup> group = std::make_shared< DatasetGroup >(
                                           name(),
                                           mMesh.get(),
@@ -235,7 +218,7 @@ void MDAL::DriverHec2D::readFaceOutput( const HdfFile &hdfFile,
                                           datasetName
                                         );
   group->setDataLocation( MDAL_DataLocation::DataOnFaces );
-  group->setIsScalar( true );
+  group->setIsScalar( false );
   group->setReferenceTime( referenceTime );
 
   std::vector<std::shared_ptr<MDAL::MemoryDataset2D>> datasets;
@@ -253,40 +236,114 @@ void MDAL::DriverHec2D::readFaceOutput( const HdfFile &hdfFile,
   {
     std::string flowAreaName = flowAreaNames[nArea];
 
-    size_t nFaces;
-    std::vector<int> face2Cells = readFace2Cells( hdfFile, flowAreaName, &nFaces );
-
     HdfGroup gFlowAreaRes = openHdfGroup( rootGroup, flowAreaName );
-    HdfDataset dsVals = openHdfDataset( gFlowAreaRes, rawDatasetName );
+    HdfDataset dsVals;
+    try
+    {
+      dsVals = openHdfDataset( gFlowAreaRes, rawDatasetName );
+    }
+    catch ( MDAL::Error )
+    {
+      return;
+    }
+
     std::vector<float> vals = dsVals.readArray();
+
+    HdfGroup gGeom = openHdfGroup( hdfFile, "Geometry" );
+    HdfGroup gGeom2DFlowAreas = openHdfGroup( gGeom, "2D Flow Areas" );
+    HdfGroup gArea = openHdfGroup( gGeom2DFlowAreas, flowAreaName );
+    HdfDataset dsCellFaceInfo = openHdfDataset( gArea, "Cells Face and Orientation Info" );
+    std::vector<hsize_t> celldims = dsCellFaceInfo.dims();
+    std::vector<int> cellFaceInfo = dsCellFaceInfo.readArrayInt();
+
+    HdfDataset dsCellFaceOrValues = openHdfDataset( gArea, "Cells Face and Orientation Values" );
+    std::vector<int> cellFaceOrValues = dsCellFaceOrValues.readArrayInt();
+
+    HdfDataset dsFacePointIndex = openHdfDataset( gArea, "Faces FacePoint Indexes" );
+    std::vector<hsize_t> fdims = dsFacePointIndex.dims();
+    size_t nFaces = static_cast<size_t>( fdims[0] );
+    std::vector<int> facePointIndex = dsFacePointIndex.readArrayInt();
+
+    HdfDataset dsCoords = openHdfDataset( gArea, "FacePoints Coordinate" );
+    std::vector<hsize_t> cdims = dsCoords.dims();
+    std::vector<double> coords = dsCoords.readArrayDouble(); //2xnNodes matrix in array
 
     for ( size_t tidx = 0; tidx < times.size(); ++tidx )
     {
       std::shared_ptr<MDAL::MemoryDataset2D> dataset = datasets[tidx];
       double *values = dataset->values();
 
-      for ( size_t i = 0; i < nFaces; ++i )
+      for ( size_t cell_idx = 0; cell_idx < celldims.at( 0 ); ++cell_idx )
       {
-        size_t idx = tidx * nFaces + i;
-        double val = static_cast<double>( vals[idx] ); // This is value on face!
-
-        if ( !std::isnan( val ) && fabs( val ) > eps ) //not nan and not 0
+        size_t cell_mdal_idx = cell_idx + areaElemStartIndex[nArea];
+        double valx = 0;
+        double valy = 0;
+        size_t consideredValueCount = 0;
+        size_t firstPosition = static_cast<size_t>( cellFaceInfo[cell_idx * 2] );
+        size_t faceCount = static_cast<size_t>( cellFaceInfo[cell_idx * 2 + 1] );
+        for ( size_t f = 0; f < faceCount; ++f )
         {
-          for ( size_t c = 0; c < 2; ++c )
+          //get face indexes
+          size_t faceIndex1 = static_cast<size_t>( cellFaceOrValues[( firstPosition + f ) * 2] );
+          size_t faceIndex2 = static_cast<size_t>( cellFaceOrValues[( firstPosition + ( f + 1 ) % faceCount ) * 2] );
+          double val1 = static_cast<double>( vals[faceIndex1 + tidx * nFaces] );
+          double val2 = static_cast<double>( vals[faceIndex2 + tidx * nFaces] );
+          if ( std::isnan( val1 ) || std::isnan( val2 ) )
+            continue;
+
+          size_t indexPoint11 = facePointIndex[faceIndex1 * 2];
+          size_t indexPoint12 = facePointIndex[faceIndex1 * 2 + 1];
+          size_t indexPoint21 = facePointIndex[faceIndex2 * 2];
+          size_t indexPoint22 = facePointIndex[faceIndex2 * 2 + 1];
+          bool commonIndex = ( indexPoint11 == indexPoint21 ||
+                               indexPoint11 == indexPoint22 ||
+                               indexPoint12 == indexPoint21 ||
+                               indexPoint12 == indexPoint22 );
+          if ( !commonIndex )
           {
-            size_t cell_idx = static_cast<size_t>( face2Cells[2 * i + c] ) + areaElemStartIndex[nArea];
-            // Take just maximum
-            if ( std::isnan( values[cell_idx] ) || values[cell_idx] < val )
-            {
-              values[cell_idx] = val;
-            }
+            // should not happen, but better to prevent
+            continue;
           }
+
+          double dx1 = coords[indexPoint11 * 2] - coords[indexPoint12 * 2];
+          double dy1 = coords[indexPoint11 * 2 + 1] - coords[indexPoint12 * 2 + 1];
+          double dx2 = coords[indexPoint21 * 2] - coords[indexPoint22 * 2];
+          double dy2 = coords[indexPoint21 * 2 + 1] - coords[indexPoint22 * 2 + 1];
+          double l1 = sqrt( dx1 * dx1 + dy1 * dy1 );
+          double l2 = sqrt( dx2 * dx2 + dy2 * dy2 );
+          if ( l1 == 0 || l2 == 0 )
+          {
+            continue;
+          }
+          double nx1 =   -dy1 / l1;
+          double ny1 =  dx1 / l1;
+          double nx2 =   -dy2 / l2;
+          double ny2 =  dx2 / l2;
+
+          double deter = nx1 * ny2 - nx2 * ny1;
+          if ( deter == 0 ) //colinear face, forbidden by hecras, but better to prevent
+            continue;
+          valx += ( ny2 * val1 - ny1 * val2 ) / deter;
+          valy += ( nx1 * val2 - nx2 * val1 ) / deter;
+          consideredValueCount++;
+        }
+        if ( consideredValueCount != 0 )
+        {
+          valx /= consideredValueCount;
+          valy /= consideredValueCount;
+          values[cell_mdal_idx * 2] = valx;
+          values[cell_mdal_idx * 2 + 1] = valy;
+        }
+        else
+        {
+          values[cell_mdal_idx * 2] = std::numeric_limits<double>::quiet_NaN();
+          values[cell_mdal_idx * 2 + 1] = std::numeric_limits<double>::quiet_NaN();
         }
       }
     }
   }
 
-  for ( auto dataset : datasets )
+  for ( auto &dataset : datasets )
   {
     dataset->setStatistics( MDAL::calculateStatistics( dataset ) );
     group->datasets.push_back( dataset );
@@ -302,15 +359,15 @@ void MDAL::DriverHec2D::readFaceResults( const HdfFile &hdfFile,
   // UNSTEADY
   HdfGroup flowGroup = get2DFlowAreasGroup( hdfFile, "Unsteady Time Series" );
   MDAL::DateTime referenceDateTime = readReferenceDateTime( hdfFile );
-  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Face Shear Stress", "Face Shear Stress", mTimes, referenceDateTime );
-  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Face Velocity", "Face Velocity", mTimes, referenceDateTime );
+  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Face Shear Stress", "Shear Stress", mTimes, referenceDateTime );
+  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Face Velocity", "Velocity", mTimes, referenceDateTime );
 
   // SUMMARY
   flowGroup = get2DFlowAreasGroup( hdfFile, "Summary Output" );
   std::vector<MDAL::RelativeTimestamp> dummyTimes( 1, MDAL::RelativeTimestamp() );
 
-  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Maximum Face Shear Stress", "Face Shear Stress/Maximums", dummyTimes, referenceDateTime );
-  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Maximum Face Velocity", "Face Velocity/Maximums", dummyTimes, referenceDateTime );
+  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Maximum Face Shear Stress", "Shear Stress/Maximums", dummyTimes, referenceDateTime );
+  readFaceOutput( hdfFile, flowGroup, areaElemStartIndex, flowAreaNames, "Maximum Face Velocity", "Velocity/Maximums", dummyTimes, referenceDateTime );
 }
 
 
@@ -323,7 +380,7 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readElemOutput( const 
     std::shared_ptr<MDAL::MemoryDataset2D> bed_elevation,
     const DateTime &referenceTime )
 {
-  double eps = std::numeric_limits<double>::min();
+  double eps = static_cast<double>( std::numeric_limits<float>::epsilon() ); //hecras use float so comparison needs to use float epsilon
 
   std::shared_ptr<DatasetGroup> group = std::make_shared< DatasetGroup >(
                                           name(),
@@ -350,7 +407,16 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readElemOutput( const 
     std::string flowAreaName = flowAreaNames[nArea];
     HdfGroup gFlowAreaRes = openHdfGroup( rootGroup, flowAreaName );
 
-    HdfDataset dsVals = openHdfDataset( gFlowAreaRes, rawDatasetName );
+    HdfDataset dsVals;
+    try
+    {
+      dsVals = openHdfDataset( gFlowAreaRes, rawDatasetName );
+    }
+    catch ( MDAL::Error )
+    {
+      return nullptr;
+    }
+
     std::vector<float> vals = dsVals.readArray();
 
     for ( size_t tidx = 0; tidx < times.size(); ++tidx )
@@ -362,7 +428,7 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readElemOutput( const 
       {
         size_t idx = tidx * nAreaElements + i;
         size_t eInx = areaElemStartIndex[nArea] + i;
-        double val = static_cast<double>( vals[idx] );
+        double val =  static_cast<double>( vals[idx] );
         if ( !std::isnan( val ) )
         {
           if ( !bed_elevation )
@@ -383,7 +449,7 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readElemOutput( const 
             {
               assert( bed_elevation );
               double bed_elev = bed_elevation->scalarValue( eInx );
-              if ( std::isnan( bed_elev ) || fabs( bed_elev - val ) > eps ) // change from bed elevation
+              if ( std::isnan( bed_elev ) || fabs( val - bed_elev ) > ( val + bed_elev )*eps )  // change from bed elevation
               {
                 values[eInx] = val;
               }
@@ -394,7 +460,7 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readElemOutput( const 
     }
   }
 
-  for ( auto dataset : datasets )
+  for ( auto &dataset : datasets )
   {
     dataset->setStatistics( MDAL::calculateStatistics( dataset ) );
     group->datasets.push_back( dataset );
@@ -413,16 +479,20 @@ std::shared_ptr<MDAL::MemoryDataset2D> MDAL::DriverHec2D::readBedElevation(
   std::vector<MDAL::RelativeTimestamp> times( 1 );
   DateTime referenceTime;
 
-  return readElemOutput(
-           gGeom2DFlowAreas,
-           areaElemStartIndex,
-           flowAreaNames,
-           "Cells Minimum Elevation",
-           "Bed Elevation",
-           times,
-           std::shared_ptr<MDAL::MemoryDataset2D>(),
-           referenceTime
-         );
+  std::shared_ptr<MDAL::MemoryDataset2D> bedElevation = readElemOutput(
+        gGeom2DFlowAreas,
+        areaElemStartIndex,
+        flowAreaNames,
+        "Cells Minimum Elevation",
+        "Bed Elevation",
+        times,
+        std::shared_ptr<MDAL::MemoryDataset2D>(),
+        referenceTime
+      );
+
+  if ( ! bedElevation ) throw MDAL::Error( MDAL_Status::Err_InvalidData, "Unable to read bed elevation values" );
+
+  return bedElevation;
 }
 
 void MDAL::DriverHec2D::readElemResults(

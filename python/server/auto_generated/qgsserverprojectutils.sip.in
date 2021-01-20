@@ -36,7 +36,7 @@ Returns the owsService title defined in project.
 
 :param project: the QGIS project
 
-:return: the owsService title if defined in project.
+:return: the owsService title if defined in project with project title as fallback, "Untitled" otherwise.
 %End
 
   QString owsServiceAbstract( const QgsProject &project );
@@ -212,6 +212,15 @@ Returns if the geometry is displayed as Well Known Text in GetFeatureInfo reques
 :param project: the QGIS project
 
 :return: if the geometry is displayed as Well Known Text in GetFeatureInfo request.
+%End
+
+  bool wmsFeatureInfoUseAttributeFormSettings( const QgsProject &project );
+%Docstring
+Returns if feature form settings should be considered for the format of the feature info response
+
+:param project: the QGIS project
+
+:return: true if the feature form settings shall be considered for the feature info response
 %End
 
   bool wmsFeatureInfoSegmentizeWktGeometry( const QgsProject &project );

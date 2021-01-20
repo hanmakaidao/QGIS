@@ -55,12 +55,16 @@ Qgs3DMapSettings::Qgs3DMapSettings( const Qgs3DMapSettings &other )
   , mDirectionalLights( other.mDirectionalLights )
   , mFieldOfView( other.mFieldOfView )
   , mProjectionType( other.mProjectionType )
+  , mCameraNavigationMode( other.mCameraNavigationMode )
+  , mCameraMovementSpeed( other.mCameraMovementSpeed )
   , mLayers( other.mLayers )
   , mTerrainLayers( other.mTerrainLayers )
   , mRenderers() // initialized in body
   , mTransformContext( other.mTransformContext )
   , mPathResolver( other.mPathResolver )
   , mMapThemes( other.mMapThemes )
+  , mDpi( other.mDpi )
+  , mIsFpsCounterEnabled( other.mIsFpsCounterEnabled )
   , mIsSkyboxEnabled( other.mIsSkyboxEnabled )
   , mSkyboxSettings( other.mSkyboxSettings )
   , mShadowSettings( other.mShadowSettings )
@@ -98,6 +102,12 @@ void Qgs3DMapSettings::readXml( const QDomElement &elem, const QgsReadWriteConte
   {
     mFieldOfView = elemCamera.attribute( QStringLiteral( "field-of-view" ), QStringLiteral( "45" ) ).toFloat();
     mProjectionType = static_cast< Qt3DRender::QCameraLens::ProjectionType >( elemCamera.attribute( QStringLiteral( "projection-type" ), QStringLiteral( "1" ) ).toInt() );
+    QString cameraNavigationMode = elemCamera.attribute( QStringLiteral( "camera-navigation-mode" ), QStringLiteral( "basic-navigation" ) );
+    if ( cameraNavigationMode == QStringLiteral( "terrain-based-navigation" ) )
+      mCameraNavigationMode = QgsCameraController::NavigationMode::TerrainBasedNavigation;
+    else if ( cameraNavigationMode == QStringLiteral( "walk-navigation" ) )
+      mCameraNavigationMode = QgsCameraController::NavigationMode::WalkNavigation;
+    mCameraMovementSpeed = elemCamera.attribute( QStringLiteral( "camera-movement-speed" ), QStringLiteral( "5.0" ) ).toDouble();
   }
 
   QDomElement elemColor = elem.firstChildElement( QStringLiteral( "color" ) );
@@ -270,6 +280,7 @@ void Qgs3DMapSettings::readXml( const QDomElement &elem, const QgsReadWriteConte
   mShowTerrainTileInfo = elemDebug.attribute( QStringLiteral( "terrain-tile-info" ), QStringLiteral( "0" ) ).toInt();
   mShowCameraViewCenter = elemDebug.attribute( QStringLiteral( "camera-view-center" ), QStringLiteral( "0" ) ).toInt();
   mShowLightSources = elemDebug.attribute( QStringLiteral( "show-light-sources" ), QStringLiteral( "0" ) ).toInt();
+  mIsFpsCounterEnabled = elemDebug.attribute( QStringLiteral( "show-fps-counter" ), QStringLiteral( "0" ) ).toInt();
 
   QDomElement elemTemporalRange = elem.firstChildElement( QStringLiteral( "temporal-range" ) );
   QDateTime start = QDateTime::fromString( elemTemporalRange.attribute( QStringLiteral( "start" ) ), Qt::ISODate );
@@ -290,6 +301,16 @@ QDomElement Qgs3DMapSettings::writeXml( QDomDocument &doc, const QgsReadWriteCon
   QDomElement elemCamera = doc.createElement( QStringLiteral( "camera" ) );
   elemCamera.setAttribute( QStringLiteral( "field-of-view" ), mFieldOfView );
   elemCamera.setAttribute( QStringLiteral( "projection-type" ), static_cast< int >( mProjectionType ) );
+  switch ( mCameraNavigationMode )
+  {
+    case QgsCameraController::TerrainBasedNavigation:
+      elemCamera.setAttribute( QStringLiteral( "camera-navigation-mode" ), QStringLiteral( "terrain-based-navigation" ) );
+      break;
+    case QgsCameraController::WalkNavigation:
+      elemCamera.setAttribute( QStringLiteral( "camera-navigation-mode" ), QStringLiteral( "walk-navigation" ) );
+      break;
+  }
+  elemCamera.setAttribute( QStringLiteral( "camera-movement-speed" ), mCameraMovementSpeed );
   elem.appendChild( elemCamera );
 
   QDomElement elemColor = doc.createElement( QStringLiteral( "color" ) );
@@ -379,6 +400,7 @@ QDomElement Qgs3DMapSettings::writeXml( QDomDocument &doc, const QgsReadWriteCon
   elemDebug.setAttribute( QStringLiteral( "terrain-tile-info" ), mShowTerrainTileInfo ? 1 : 0 );
   elemDebug.setAttribute( QStringLiteral( "camera-view-center" ), mShowCameraViewCenter ? 1 : 0 );
   elemDebug.setAttribute( QStringLiteral( "show-light-sources" ), mShowLightSources ? 1 : 0 );
+  elemDebug.setAttribute( QStringLiteral( "show-fps-counter" ), mIsFpsCounterEnabled ? 1 : 0 );
   elem.appendChild( elemDebug );
 
   QDomElement elemEyeDomeLighting = doc.createElement( QStringLiteral( "eye-dome-lighting" ) );
@@ -753,6 +775,24 @@ void Qgs3DMapSettings::setProjectionType( const Qt3DRender::QCameraLens::Project
   emit projectionTypeChanged();
 }
 
+void Qgs3DMapSettings::setCameraNavigationMode( QgsCameraController::NavigationMode navigationMode )
+{
+  if ( mCameraNavigationMode == navigationMode )
+    return;
+
+  mCameraNavigationMode = navigationMode;
+  emit cameraNavigationModeChanged();
+}
+
+void Qgs3DMapSettings::setCameraMovementSpeed( double movementSpeed )
+{
+  if ( mCameraMovementSpeed == movementSpeed )
+    return;
+
+  mCameraMovementSpeed = movementSpeed;
+  emit cameraMovementSpeedChanged();
+}
+
 void Qgs3DMapSettings::setSkyboxSettings( const QgsSkyboxSettings &skyboxSettings )
 {
   mSkyboxSettings = skyboxSettings;
@@ -779,4 +819,12 @@ void Qgs3DMapSettings::setDebugDepthMapSettings( bool enabled, Qt::Corner corner
   mDebugDepthMapCorner = corner;
   mDebugDepthMapSize = size;
   emit debugDepthMapSettingsChanged();
+}
+
+void Qgs3DMapSettings::setIsFpsCounterEnabled( bool fpsCounterEnabled )
+{
+  if ( fpsCounterEnabled == mIsFpsCounterEnabled )
+    return;
+  mIsFpsCounterEnabled = fpsCounterEnabled;
+  emit fpsCounterEnabledChanged( mIsFpsCounterEnabled );
 }

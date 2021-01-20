@@ -1348,7 +1348,7 @@ QVariant QgsProcessingModelAlgorithm::toVariant() const
   QVariantMap paramDefMap;
   for ( const QgsProcessingParameterDefinition *def : mParameters )
   {
-    if ( def->name() == QStringLiteral( "VERBOSE_LOG" ) )
+    if ( def->name() == QLatin1String( "VERBOSE_LOG" ) )
       continue;
 
     paramDefMap.insert( def->name(), def->toVariantMap() );
@@ -1427,6 +1427,10 @@ bool QgsProcessingModelAlgorithm::loadVariant( const QVariant &model )
       if ( param->name() == QLatin1String( "VERBOSE_LOG" ) )
         return; // internal parameter -- some versions of QGIS incorrectly stored this in the model definition file
 
+      // set parameter help from help content
+      param->setHelp( mHelpContent.value( param->name() ).toString() );
+
+      // add parameter
       addParameter( param.release() );
     }
     else
