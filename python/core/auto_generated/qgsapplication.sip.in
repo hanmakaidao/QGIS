@@ -792,6 +792,7 @@ Returns the application's bookmark manager, used for storing installation-wide b
 .. versionadded:: 3.10
 %End
 
+
     static QgsStyleModel *defaultStyleModel();
 %Docstring
 Returns a shared QgsStyleModel containing the default style library (see :py:func:`QgsStyle.defaultStyle()`).

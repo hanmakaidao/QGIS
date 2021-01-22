@@ -64,6 +64,7 @@ class QgsConnectionRegistry;
 class QgsScaleBarRendererRegistry;
 class Qgs3DSymbolRegistry;
 class QgsPointCloudRendererRegistry;
+class QgsTileDownloadManager;
 
 /**
  * \ingroup core
@@ -738,6 +739,13 @@ class CORE_EXPORT QgsApplication : public QApplication
     static QgsBookmarkManager *bookmarkManager();
 
     /**
+     * Returns the application's tile download manager, used for download of map tiles when rendering.
+     * \note not available in Python bindings
+     * \since QGIS 3.18
+     */
+    static QgsTileDownloadManager *tileDownloadManager() SIP_SKIP;
+
+    /**
      * Returns a shared QgsStyleModel containing the default style library (see QgsStyle::defaultStyle()).
      *
      * Using this shared model instead of creating a new QgsStyleModel improves performance.
@@ -1010,6 +1018,7 @@ class CORE_EXPORT QgsApplication : public QApplication
       QgsAnnotationItemRegistry *mAnnotationItemRegistry = nullptr;
       QgsUserProfileManager *mUserConfigManager = nullptr;
       QgsBookmarkManager *mBookmarkManager = nullptr;
+      QgsTileDownloadManager *mTileDownloadManager = nullptr;
       QgsStyleModel *mStyleModel = nullptr;
       QString mNullRepresentation;
       QStringList mSvgPathCache;
