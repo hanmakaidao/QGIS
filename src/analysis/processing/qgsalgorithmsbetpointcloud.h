@@ -100,27 +100,8 @@ typedef struct
     float elevation;  // metres
 } RieglPulse;
 
-// Optech does it like R3(heading) * R1(-pitch) * R2(-roll)
-pdal::georeference::RotationMatrix createRieglRotationMatrix(double roll, double pitch, double heading)
-{
-    return georeference::RotationMatrix(
-        std::cos(roll) * std::cos(heading) +
-            std::sin(pitch) * std::sin(roll) * std::sin(heading), // m00
-        std::cos(pitch) * std::sin(heading),                      // m01
-        std::cos(heading) * std::sin(roll) -
-            std::cos(roll) * std::sin(pitch) * std::sin(heading), // m02
-        std::cos(heading) * std::sin(pitch) * std::sin(roll) -
-            std::cos(roll) * std::sin(heading), // m10
-        std::cos(pitch) * std::cos(heading),    // m11
-        -std::sin(roll) * std::sin(heading) -
-            std::cos(roll) * std::cos(heading) * std::sin(pitch), // m12
-        -std::cos(pitch) * std::sin(roll),                        // m20
-        std::sin(pitch),                                          // m21
-        std::cos(pitch) * std::cos(roll)                          // m22
-        );
-}
-///@cond PRIVATE
 
+///@cond PRIVATE
 class RieglReaderWithGeoCorrect: public Reader
 {
 public:
@@ -218,7 +199,7 @@ class QgsPointCloudGeoRefWithSbetAlgorithm : public QgsPointCloudAlgorithmBase
     
   private:
 
-    QgsCoordinateReferenceSystem mCrs;
+    QString mCrs;
     QString inputpointcloud;
     QString inputsbet;
     QString outputcloud;

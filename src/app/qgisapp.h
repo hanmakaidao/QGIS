@@ -1893,7 +1893,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! Activates rotate feature tool
     void rotateFeature();
     //! Activates scale feature tool
-    void scaleFeature();
+   // void scaleFeature();
     //! Activates rotate label tool
     void rotateLabel();
     //! Activates label property tool

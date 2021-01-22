@@ -3423,6 +3423,16 @@ Shows placeholders for labels which could not be placed, e.g. due to overlaps wi
     <string>切换视图</string>
    </property>
   </action>
+  <action name="mActionScaleFeature">
+   <property name="text">
+    <string>mActionScaleFeature</string>
+   </property>
+  </action>
+  <action name="mActionZoomToLayers">
+   <property name="text">
+    <string>mActionZoomToLayers</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="../../images/images.qrc"/>

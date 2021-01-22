@@ -66,7 +66,7 @@ QString QgsPointCloudGeoRefWithSbetAlgorithm::name() const
 
 QString QgsPointCloudGeoRefWithSbetAlgorithm::displayName() const
 {
-  return QObject::tr( "原始数据解算" );
+  return QObject::tr( "Riegl原始数据解算" );
 }
 
 QStringList QgsPointCloudGeoRefWithSbetAlgorithm::tags() const
@@ -76,7 +76,7 @@ QStringList QgsPointCloudGeoRefWithSbetAlgorithm::tags() const
 
 QString QgsPointCloudGeoRefWithSbetAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "使用姿轨曲线对点云进行地理矫正" );
+  return QObject::tr( "对Riegl-rxp格式数据进行解析，并使用姿轨曲线对点云进行地理矫正，得到POS与点云坐标融合的数据" );
 }
 
 QgsPointCloudGeoRefWithSbetAlgorithm *QgsPointCloudGeoRefWithSbetAlgorithm::createInstance() const
@@ -86,10 +86,26 @@ QgsPointCloudGeoRefWithSbetAlgorithm *QgsPointCloudGeoRefWithSbetAlgorithm::crea
 
 void QgsPointCloudGeoRefWithSbetAlgorithm::addAlgorithmParams()
 {
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("INPUT"), QStringLiteral("INPUT"), QgsProcessingParameterFile::Behavior::File, QObject::tr("")));
-  addParameter(new QgsProcessingParameterFile(QStringLiteral("Sbet File"), QStringLiteral("Sbel file ,pos information"), QgsProcessingParameterFile::Behavior::File));
-  addParameter(new QgsProcessingParameterCrs(QStringLiteral("TARGET_CRS"), QObject::tr("Target CRS"), QStringLiteral("ProjectCrs")));
-  addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("Output point cloud")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("RXP-Input"), QStringLiteral("riegl-rxp"), QgsProcessingParameterFile::Behavior::File, QObject::tr("rxp")));
+  addParameter(new QgsProcessingParameterFile(QStringLiteral("Sbet File"), QStringLiteral("SBET File "), QgsProcessingParameterFile::Behavior::File));
+  addParameter(new QgsProcessingParameterBoolean(QStringLiteral("With SBET"), QObject::tr("With SBET"), true));
+
+  addParameter(new QgsProcessingParameterCrs(QStringLiteral("CRS_OUTPUT"), QObject::tr("Output coordinate system"), QVariant(), true));
+
+  addParameter(new QgsProcessingParameterBoolean(QStringLiteral("sync_to_pps"), QObject::tr("sync_to_pps"), true));
+  addParameter(new QgsProcessingParameterBoolean(QStringLiteral("reflectance_as_intensity"), QObject::tr("reflectance_as_intensity"), true));
+
+  std::unique_ptr< QgsProcessingParameterNumber > min_reflectance = qgis::make_unique< QgsProcessingParameterNumber >(QStringLiteral("The low end of the reflectance-to-intensity map"), QObject::tr("The low end of the reflectance-to-intensity map"), QgsProcessingParameterNumber::Double, 1.0, true);
+  min_reflectance->setFlags(min_reflectance->flags() | QgsProcessingParameterDefinition::FlagAdvanced);
+
+  std::unique_ptr< QgsProcessingParameterNumber >max_reflectance = qgis::make_unique< QgsProcessingParameterNumber >(QStringLiteral("The high end of the reflectance-to-intensity map"), QObject::tr("The high end of the reflectance-to-intensity map"), QgsProcessingParameterNumber::Integer, 100.0, true);
+  max_reflectance->setFlags(max_reflectance->flags() | QgsProcessingParameterDefinition::FlagAdvanced);
+
+  addParameter(min_reflectance.release());
+
+  addParameter(max_reflectance.release());
+
+  addParameter(new QgsProcessingParameterFileDestination(QStringLiteral("OUTPUT"), QObject::tr("Output point cloud"), QObject::tr(".las")));
 }
 
 bool QgsPointCloudGeoRefWithSbetAlgorithm::getPcdInfo( const QVariantMap &parameters, QgsProcessingContext &context )
@@ -101,17 +117,46 @@ bool QgsPointCloudGeoRefWithSbetAlgorithm::getPcdInfo( const QVariantMap &parame
 QVariantMap QgsPointCloudGeoRefWithSbetAlgorithm::processPointCloudAlgorithm(const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback)
 {
 
-  mCrs = parameterAsCrs(parameters, QStringLiteral("TARGET_CRS"), context);
-  inputpointcloud = parameterAsFile(parameters, QStringLiteral("INPUT"), context);
+  QgsCoordinateReferenceSystem outputCrs = parameterAsCrs(parameters, QStringLiteral("CRS_OUTPUT"), context);
+  QString crs_wkt =outputCrs.toWkt();
+
+  inputpointcloud = parameterAsFile(parameters, QStringLiteral("RXP-Input"), context);
   inputsbet = parameterAsFile(parameters, QStringLiteral("Sbet File"), context);
   outputcloud = parameterAsFileOutput(parameters, QStringLiteral("OUTPUT"), context);
+  bool sync_to_pps = parameterAsBoolean(parameters, QStringLiteral("sync_to_pps"), context);
+  bool reflectance_as_intensity = parameterAsBoolean(parameters, QStringLiteral("reflectance_as_intensity"), context);
+  int min_reflectance = parameterAsInt(parameters, QStringLiteral("The low end of the reflectance-to-intensity map"), context);
+  int max_reflectance = parameterAsInt(parameters, QStringLiteral("The high end of the reflectance-to-intensity map"), context);
+
+
+  PipelineManager mgr;
+
+  Options optsR;
+  optsR.add("filename", inputpointcloud.toStdString());
+  optsR.add("reflectance_as_intensity",  parameterAsBoolean(parameters, QStringLiteral("sync_to_pps"), context));
+  optsR.add("sync_to_pps", parameterAsBoolean(parameters, QStringLiteral("reflectance_as_intensity"), context));
+  optsR.add("min_reflectance", parameterAsInt(parameters, QStringLiteral("The low end of the reflectance-to-intensity map"), context));
+  optsR.add("max_reflectance", parameterAsInt(parameters, QStringLiteral("The high end of the reflectance-to-intensity map"), context));
+
+  Stage& reader1 = mgr.addReader("readers.rxp");
+  reader1.setOptions(optsR);
+
+  Options optsW;
+  optsW.add("filename", outputcloud.toStdString());
+  Stage& writer = mgr.addWriter("writers.las");
+  writer.setInput(reader1);
+  writer.setOptions(optsW);
+
+  point_count_t np = mgr.execute();
+
+
   QVariantMap outputs;
   std::string output; // 程序运行的输出
-  runInfo(inputpointcloud.toStdString()+ " " + "--all",output);
+  /*runInfo(inputpointcloud.toStdString()+ " " + "--all",output);
   outputs.insert(QStringLiteral("OUTPUT"), QString::fromStdString(output));
 
   std::string output1;
-  runTranslate(inputpointcloud.toStdString()+ " "+ outputcloud.toStdString(),output1);
+  runTranslate(inputpointcloud.toStdString()+ " "+ outputcloud.toStdString(),output1);*/
 
   outputs.insert(QStringLiteral("OUTPUT"), QString::fromStdString(output));
 
