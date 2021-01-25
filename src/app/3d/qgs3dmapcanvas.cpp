@@ -61,6 +61,8 @@ Qgs3DMapCanvas::Qgs3DMapCanvas( QWidget *parent )
 
   mEngine->window()->setCursor( Qt::OpenHandCursor );
   mEngine->window()->installEventFilter( this );
+
+  mEngine->setSize( mContainer->size() );
 }
 
 Qgs3DMapCanvas::~Qgs3DMapCanvas()
@@ -83,6 +85,8 @@ void Qgs3DMapCanvas::resizeEvent( QResizeEvent *ev )
 
   QRect viewportRect( QPoint( 0, 0 ), size() );
   mScene->cameraController()->setViewport( viewportRect );
+
+  mEngine->setSize( viewportRect.size() );
 }
 
 void Qgs3DMapCanvas::setMap( Qgs3DMapSettings *map )
@@ -91,9 +95,10 @@ void Qgs3DMapCanvas::setMap( Qgs3DMapSettings *map )
   Q_ASSERT( !mMap );
   Q_ASSERT( !mScene );
 
-  //QRect viewportRect( QPoint( 0, 0 ), size() );
+  QRect viewportRect( QPoint( 0, 0 ), size() );
   Qgs3DMapScene *newScene = new Qgs3DMapScene( *map, mEngine );
 
+  mEngine->setSize( viewportRect.size() );
   mEngine->setRootEntity( newScene );
 
   if ( mScene )
