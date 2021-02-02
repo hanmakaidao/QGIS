@@ -45,6 +45,7 @@ class CORE_EXPORT QgsPointCloudExtentRenderer : public QgsPointCloudRenderer
     QString type() const override;
     QgsPointCloudRenderer *clone() const override;
     void renderBlock( const QgsPointCloudBlock *block, QgsPointCloudRenderContext &context ) override;
+    void renderWithOutIndex(std::vector<PtData>& PtData, QgsPointCloudRenderContext &context) override ;
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) const override;
 
     void startRender( QgsPointCloudRenderContext &context ) override;

@@ -42,7 +42,29 @@ QgsPointCloudRenderer *QgsPointCloudExtentRenderer::clone() const
   copyCommonProperties( res.get() );
   return res.release();
 }
+void  QgsPointCloudExtentRenderer::renderWithOutIndex(std::vector<PtData>& PData, QgsPointCloudRenderContext &context)
+{
+  const QgsRectangle visibleExtent = context.renderContext().extent();
+  int red = 0;
+  int green = 0;
+  int blue = 0;
+  double x = 0;
+  double y = 0;
+  double z = 0;
+  int rendered = 0;
 
+  for (std::vector<PtData>::iterator it = PData.begin(); it != PData.end(); ++it)
+  {
+    red = (*it).r;
+    blue = (*it).b;
+    green = (*it).g;
+    x = (*it).x;
+    y = (*it).y;
+    drawPoint(x, y, QColor(red, green, blue), context);
+    rendered++;
+  }
+
+}
 void QgsPointCloudExtentRenderer::renderBlock( const QgsPointCloudBlock *, QgsPointCloudRenderContext & )
 {
 

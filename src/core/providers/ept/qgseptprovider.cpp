@@ -106,6 +106,11 @@ QVariantMap QgsEptProvider::originalMetadata() const
   return mIndex->originalMetadata();
 }
 
+std::vector<PtData>& QgsEptProvider::getdata()
+{
+  return data;;
+  //no-op, index is always generated
+}
 void QgsEptProvider::generateIndex()
 {
   //no-op, index is always generated

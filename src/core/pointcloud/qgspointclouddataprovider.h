@@ -42,6 +42,8 @@ class QgsGeometry;
  *
  * \since QGIS 3.18
  */
+
+
 class CORE_EXPORT QgsPointCloudDataProvider: public QgsDataProvider
 {
     Q_OBJECT
@@ -151,6 +153,11 @@ class CORE_EXPORT QgsPointCloudDataProvider: public QgsDataProvider
      */
     virtual void generateIndex( ) = 0;
 
+    virtual std::vector<PtData>& getdata()
+    {
+      std::vector<PtData> data;
+      return data ;
+    };
 
     /**
      * Gets the current index generation state

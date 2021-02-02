@@ -85,6 +85,8 @@ bool QgsPointCloudLayerRenderer::render()
     // special case for extent only renderer!
     mRenderer->startRender( context );
     static_cast< QgsPointCloudExtentRenderer * >( mRenderer.get() )->renderExtent( mCloudExtent, context );
+    
+    mRenderer->renderWithOutIndex(mLayer->dataProvider()->getdata(), context);
     mRenderer->stopRender( context );
     return true;
   }

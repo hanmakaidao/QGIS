@@ -64,8 +64,6 @@ Encapsulates information relating to a GPS position fix.
 
     double elevation;
 
-    double elevation_diff;
-
     double speed;
 
 
@@ -83,8 +81,6 @@ Encapsulates information relating to a GPS position fix.
     double hacc;
     //! Vertical accuracy in meters
     double vacc;
-
-    double hvacc;
 
     QDateTime utcDateTime;
 

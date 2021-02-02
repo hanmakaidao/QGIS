@@ -860,8 +860,7 @@ Returns auth id of related geographic CRS
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    const QString str = sipCpp->isValid() ? QStringLiteral( "<QgsCoordinateReferenceSystem: %1>" ).arg( !sipCpp->authid().isEmpty() ? sipCpp->authid() : sipCpp->toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ) )
-                        : QStringLiteral( "<QgsCoordinateReferenceSystem: invalid>" );
+    QString str = QStringLiteral( "<QgsCoordinateReferenceSystem: %1>" ).arg( sipCpp->authid() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 

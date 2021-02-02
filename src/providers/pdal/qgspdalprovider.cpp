@@ -31,6 +31,7 @@
 #include <pdal/io/LasHeader.hpp>
 #include <pdal/Options.hpp>
 
+using namespace pdal::Dimension;
 
 #define PROVIDER_KEY QStringLiteral( "pdal" )
 #define PROVIDER_DESCRIPTION QStringLiteral( "PDAL point cloud data provider" )
@@ -210,9 +211,14 @@ QgsPointCloudIndex *QgsPdalProvider::index() const
 {
   return mIndex.get();
 }
+std::vector<PtData>& QgsPdalProvider:: getdata() 
+{
+  return data;
+}
 
 bool QgsPdalProvider::load( const QString &uri )
 {
+ 
   try
   {
     pdal::Option las_opt( "filename", uri.toStdString() );
@@ -222,6 +228,9 @@ bool QgsPdalProvider::load( const QString &uri )
     las_reader.setOptions( las_opts );
     pdal::PointTable table;
     las_reader.prepare( table );
+    pdal::PointViewSet point_view_set = las_reader.execute(table);
+    pdal::PointViewPtr point_view = *point_view_set.begin();
+    pdal::Dimension::IdList dims = point_view->dims();
     pdal::LasHeader las_header = las_reader.header();
 
     const std::string tableMetadata = pdal::Utils::toJSON( table.metadata() );
@@ -231,7 +240,7 @@ bool QgsPdalProvider::load( const QString &uri )
       mOriginalMetadata = readerMetadata.constBegin().value().toMap();
 
     // extent
-    /*
+
     double scale_x = las_header.scaleX();
     double scale_y = las_header.scaleY();
     double scale_z = las_header.scaleZ();
@@ -239,7 +248,7 @@ bool QgsPdalProvider::load( const QString &uri )
     double offset_x = las_header.offsetX();
     double offset_y = las_header.offsetY();
     double offset_z = las_header.offsetZ();
-    */
+  
 
     double xmin = las_header.minX();
     double xmax = las_header.maxX();
@@ -248,6 +257,21 @@ bool QgsPdalProvider::load( const QString &uri )
     mExtent = QgsRectangle( xmin, ymin, xmax, ymax );
 
     mPointCount = las_header.pointCount();
+
+    for (pdal::PointId idx = 0; idx < point_view->size(); ++idx)
+    {
+      // ...
+      PtData pt;
+      pt.x =point_view->getFieldAs<float>(Id::X, idx);
+      pt.y = point_view->getFieldAs<float>(Id::Y, idx);
+      pt.z = point_view->getFieldAs<float>(Id::Z, idx);
+
+      pt.r = point_view->getFieldAs<float>(Id::Red, idx);
+      pt.g= point_view->getFieldAs<float>(Id::Green, idx);
+      pt.b = point_view->getFieldAs<float>(Id::Blue, idx);
+      pt.a = point_view->getFieldAs<float>(Id::Alpha, idx);
+      data.push_back(pt);
+    }
 
     // projection
     QString wkt = QString::fromStdString( las_reader.getSpatialReference().getWKT() );
@@ -297,7 +321,7 @@ int QgsPdalProviderMetadata::priorityForUri( const QString &uri ) const
 {
   const QVariantMap parts = decodeUri( uri );
   QFileInfo fi( parts.value( QStringLiteral( "path" ) ).toString() );
-  if ( fi.suffix().compare( QLatin1String( "las" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare( QLatin1String( "laz" ), Qt::CaseInsensitive ) == 0 )
+  if ( fi.suffix().compare( QLatin1String( "las" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare( QLatin1String( "laz" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare(QLatin1String("rxp"), Qt::CaseInsensitive) == 0)
     return 100;
 
   return 0;
@@ -307,7 +331,7 @@ QList<QgsMapLayerType> QgsPdalProviderMetadata::validLayerTypesForUri( const QSt
 {
   const QVariantMap parts = decodeUri( uri );
   QFileInfo fi( parts.value( QStringLiteral( "path" ) ).toString() );
-  if ( fi.suffix().compare( QLatin1String( "las" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare( QLatin1String( "laz" ), Qt::CaseInsensitive ) == 0 )
+  if ( fi.suffix().compare( QLatin1String( "las" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare( QLatin1String( "laz" ), Qt::CaseInsensitive ) == 0 || fi.suffix().compare(QLatin1String("rxp"), Qt::CaseInsensitive) == 0)
     return QList<QgsMapLayerType>() << QgsMapLayerType::PointCloudLayer;
 
   return QList<QgsMapLayerType>();
@@ -325,7 +349,7 @@ QString QgsPdalProviderMetadata::filters( QgsProviderMetadata::FilterType type )
 
     case QgsProviderMetadata::FilterType::FilterPointCloud:
       // TODO get the available/supported filters from PDAL library
-      return QObject::tr( "PDAL Point Clouds" ) + QStringLiteral( " (*.laz *.las)" );
+      return QObject::tr( "PDAL Point Clouds" ) + QStringLiteral( " (*.laz *.las *.rxp)" );
   }
   return QString();
 }

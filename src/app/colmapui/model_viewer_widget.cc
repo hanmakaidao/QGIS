@@ -639,7 +639,8 @@ void ModelViewerWidget::wheelEvent(QWheelEvent* event) {
   event->accept();
 }
 
-void ModelViewerWidget::SetupPainters() {
+void ModelViewerWidget::SetupPainters()
+{
   makeCurrent();
 
   coordinate_axes_painter_.Setup();
@@ -657,7 +658,8 @@ void ModelViewerWidget::SetupPainters() {
   movie_grabber_triangle_painter_.Setup();
 }
 
-void ModelViewerWidget::SetupView() {
+void ModelViewerWidget::SetupView()
+{
   point_size_ = kInitPointSize;
   image_size_ = kInitImageSize;
   focus_distance_ = kInitFocusDistance;
@@ -667,7 +669,8 @@ void ModelViewerWidget::SetupView() {
   model_view_matrix_.rotate(-45, 0, 1, 0);
 }
 
-void ModelViewerWidget::Upload() {
+void ModelViewerWidget::Upload()
+{
   point_colormap_->Prepare(cameras, images, points3D, reg_image_ids);
   image_colormap_->Prepare(cameras, images, points3D, reg_image_ids);
 

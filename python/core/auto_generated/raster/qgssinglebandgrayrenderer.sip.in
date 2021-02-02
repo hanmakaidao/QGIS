@@ -10,7 +10,6 @@
 
 
 
-
 class QgsSingleBandGrayRenderer: QgsRasterRenderer
 {
 %Docstring
@@ -55,36 +54,14 @@ Takes ownership
     virtual void writeXml( QDomDocument &doc, QDomElement &parentElem ) const;
 
 
-    virtual QList< QPair< QString, QColor > > legendSymbologyItems() const;
-
-    virtual QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) /Factory/;
+    virtual void legendSymbologyItems( QList< QPair< QString, QColor > > &symbolItems /Out/ ) const;
 
 
     virtual QList<int> usesBands() const;
 
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const;
+    virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props = QgsStringMap() ) const;
 
-
-    const QgsColorRampLegendNodeSettings *legendSettings() const;
-%Docstring
-Returns the color ramp shader legend settings.
-
-.. seealso:: :py:func:`setLegendSettings`
-
-.. versionadded:: 3.18
-%End
-
-    void setLegendSettings( QgsColorRampLegendNodeSettings *settings /Transfer/ );
-%Docstring
-Sets the color ramp shader legend ``settings``.
-
-Ownership of ``settings`` is transferred.
-
-.. seealso:: :py:func:`legendSettings`
-
-.. versionadded:: 3.18
-%End
 
   private:
     QgsSingleBandGrayRenderer( const QgsSingleBandGrayRenderer & );

@@ -280,6 +280,7 @@ class CORE_EXPORT QgsPointCloudRenderer
      */
     virtual void renderBlock( const QgsPointCloudBlock *block, QgsPointCloudRenderContext &context ) = 0;
 
+    virtual void renderWithOutIndex(std::vector<PtData>& PtData, QgsPointCloudRenderContext &context) { } ;
     /**
      * Returns the list of visible points of the point cloud layer \a layer and an extent defined by
      * a geometry in the 2D plane \a geometry.

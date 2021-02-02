@@ -30,6 +30,7 @@ class QgsPdalProvider: public QgsPointCloudDataProvider
 {
     Q_OBJECT
   public:
+
     QgsPdalProvider( const QString &uri,
                      const QgsDataProvider::ProviderOptions &providerOptions,
                      QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
@@ -44,6 +45,7 @@ class QgsPdalProvider: public QgsPointCloudDataProvider
     QString name() const override;
     QString description() const override;
     QgsPointCloudIndex *index() const override;
+    std::vector<PtData>& getdata()  override;
     QVariant metadataStatistic( const QString &attribute, QgsStatisticalSummary::Statistic statistic ) const override;
     QVariantList metadataClasses( const QString &attribute ) const override;
     QVariant metadataClassStatistic( const QString &attribute, const QVariant &value, QgsStatisticalSummary::Statistic statistic ) const override;
@@ -62,7 +64,7 @@ class QgsPdalProvider: public QgsPointCloudDataProvider
     QgsRectangle mExtent;
     bool mIsValid = false;
     int mPointCount = 0;
-
+    std::vector<PtData> data;
     QVariantMap mOriginalMetadata;
     std::unique_ptr<QgsEptPointCloudIndex> mIndex;
     QgsPdalEptGenerationTask *mRunningIndexingTask = nullptr;

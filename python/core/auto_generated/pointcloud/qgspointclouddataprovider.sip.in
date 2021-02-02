@@ -40,13 +40,6 @@ Responsible for reading native point cloud data and returning the indexed data.
     typedef QFlags<QgsPointCloudDataProvider::Capability> Capabilities;
 
 
-    enum PointCloudIndexGenerationState
-    {
-      NotIndexed,
-      Indexing,
-      Indexed
-    };
-
     QgsPointCloudDataProvider( const QString &uri,
                                const QgsDataProvider::ProviderOptions &providerOptions,
                                QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
@@ -56,39 +49,6 @@ Ctor
 
     ~QgsPointCloudDataProvider();
 
-
-    SIP_PYLIST identify( float maxErrorInMapCoords, QgsGeometry extentGeometry, const QgsDoubleRange extentZRange = QgsDoubleRange(), int pointsLimit = 1000 );
-%Docstring
-Returns the list of points of the point cloud according to a zoom level
-defined by ``maxError`` (in layer coordinates), an extent ``geometry`` in the 2D plane
-and a range ``extentZRange`` for z values. The function will try to limit
-the number of points returned to ``pointsLimit`` points
-
-``maxErrorPixels`` : maximum accepted error factor in pixels
-
-.. note::
-
-   this function does not handle elevation properties and you need to
-   change elevation coordinates yourself after returning from the function
-%End
-%MethodCode
-    {
-      QVector<QMap<QString, QVariant>> res = sipCpp->identify( a0, *a1, *a2, a3 );
-      sipRes = PyList_New( res.size() );
-      for ( int i = 0; i < res.size(); ++i )
-      {
-        PyObject *dict = PyDict_New();
-        for ( QString key : res[i].keys() )
-        {
-          PyObject *keyObj = sipConvertFromNewType( new QString( key ), sipType_QString, Py_None );
-          PyObject *valObj = sipConvertFromNewType( new QVariant( res[i][key] ), sipType_QVariant, Py_None );
-          PyDict_SetItem( dict, keyObj, valObj );
-        }
-        PyList_SET_ITEM( sipRes, i, dict );
-      }
-    }
-%End
-
     virtual QgsPointCloudDataProvider::Capabilities capabilities() const;
 %Docstring
 Returns flags containing the supported capabilities for the data provider.
@@ -97,36 +57,8 @@ Returns flags containing the supported capabilities for the data provider.
     virtual QgsPointCloudAttributeCollection attributes() const = 0;
 %Docstring
 Returns the attributes available from this data provider.
-May return empty collection until :py:func:`~QgsPointCloudDataProvider.pointCloudIndexLoaded` is emitted
 %End
 
-    virtual void loadIndex( ) = 0;
-%Docstring
-Triggers loading of the point cloud index
-
-\sa :py:func:`~QgsPointCloudDataProvider.index`
-%End
-
-    virtual void generateIndex( ) = 0;
-%Docstring
-Triggers generation of the point cloud index
-
-emits :py:func:`~QgsPointCloudDataProvider.indexGenerationStateChanged`
-
-\sa :py:func:`~QgsPointCloudDataProvider.index`
-%End
-
-
-    virtual PointCloudIndexGenerationState indexingState( ) = 0;
-%Docstring
-Gets the current index generation state
-%End
-
-
-    bool hasValidIndex() const;
-%Docstring
-Returns whether provider has index which is valid
-%End
 
     virtual int pointCount() const = 0;
 %Docstring
@@ -146,14 +78,6 @@ This method will not attempt to calculate the data bounds, rather it will return
 are included in the data source's metadata.
 %End
 
-    virtual QVariantMap originalMetadata() const;
-%Docstring
-Returns a representation of the original metadata included in a point cloud dataset.
-
-This is a free-form dictionary of values, the contents and structure of which will vary by provider and
-dataset.
-%End
-
     virtual QgsPointCloudRenderer *createRenderer( const QVariantMap &configuration = QVariantMap() ) const /Factory/;
 %Docstring
 Creates a new 2D point cloud renderer, using provider backend specific information.
@@ -168,6 +92,7 @@ This method returns a new renderer and the caller takes ownership of the returne
 Only providers which report the CreateRenderer capability will return a 2D renderer. Other
 providers will return ``None``.
 %End
+
 
     SIP_PYOBJECT metadataStatistic( const QString &attribute, QgsStatisticalSummary::Statistic statistic ) const;
 %Docstring
@@ -248,27 +173,6 @@ Returns the map of LAS classification code to translated string value, correspon
 Lidar Point Classes.
 
 .. seealso:: :py:func:`lasClassificationCodes`
-%End
-
-    static QMap< int, QString > dataFormatIds();
-%Docstring
-Returns the map of LAS data format ID to untranslated string value.
-
-.. seealso:: :py:func:`translatedDataFormatIds`
-%End
-
-    static QMap< int, QString > translatedDataFormatIds();
-%Docstring
-Returns the map of LAS data format ID to translated string value.
-
-.. seealso:: :py:func:`dataFormatIds`
-%End
-
-  signals:
-
-    void indexGenerationStateChanged( PointCloudIndexGenerationState state );
-%Docstring
-Emitted when point cloud generation state is changed
 %End
 
 };

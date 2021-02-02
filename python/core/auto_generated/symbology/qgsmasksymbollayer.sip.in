@@ -27,7 +27,7 @@ Special symbol layer that uses its sub symbol as a selective mask
 Simple constructor
 %End
 
-    static QgsSymbolLayer *create( const QVariantMap &properties = QVariantMap() ) /Factory/;
+    static QgsSymbolLayer *create( const QgsStringMap &properties = QgsStringMap() ) /Factory/;
 %Docstring
 Create a new QgsMaskMarkerSymbolLayer
 
@@ -46,7 +46,7 @@ Create a new QgsMaskMarkerSymbolLayer
     virtual bool hasDataDefinedProperties() const;
 
 
-    virtual QVariantMap properties() const;
+    virtual QgsStringMap properties() const;
 
 
     virtual QString layerType() const;
@@ -58,8 +58,6 @@ Create a new QgsMaskMarkerSymbolLayer
     virtual void renderPoint( QPointF point, QgsSymbolRenderContext &context );
 
     virtual QRectF bounds( QPointF point, QgsSymbolRenderContext &context );
-
-    virtual bool usesMapUnits() const;
 
 
     virtual void drawPreviewIcon( QgsSymbolRenderContext &context, QSize size );
