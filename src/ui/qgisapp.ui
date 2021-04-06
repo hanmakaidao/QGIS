@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1064</width>
+    <width>1523</width>
     <height>506</height>
    </rect>
   </property>
@@ -16,8 +16,13 @@
     <rect>
      <x>0</x>
      <y>0</y>
+<<<<<<< HEAD
      <width>1064</width>
      <height>24</height>
+=======
+     <width>1523</width>
+     <height>22</height>
+>>>>>>> 8d6357eb213466b34fef120c6a88f6b1aea127d3
     </rect>
    </property>
    <property name="toolTip">
@@ -122,6 +127,7 @@
      <addaction name="mActionPreviewDeuteranope"/>
      <addaction name="mActionPreviewTritanope"/>
     </widget>
+<<<<<<< HEAD
     <widget class="QMenu" name="mMenuLayerVisibility">
      <property name="title">
       <string>Layer Visibility</string>
@@ -134,6 +140,9 @@
      <addaction name="mActionToggleSelectedLayersIndependently"/>
      <addaction name="mActionHideDeselectedLayers"/>
     </widget>
+=======
+    <addaction name="mActionChangeDimension"/>
+>>>>>>> 8d6357eb213466b34fef120c6a88f6b1aea127d3
     <addaction name="mActionNewMapCanvas"/>
     <addaction name="mActionNew3DMapCanvas"/>
     <addaction name="mActionPan"/>
@@ -286,12 +295,7 @@
    </widget>
    <widget class="QMenu" name="mVectorMenu">
     <property name="title">
-     <string>Vect&amp;or</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="mEditMenu">
-    <property name="title">
-     <string>&amp;Edit</string>
+     <string>&amp;矢量</string>
     </property>
     <widget class="QMenu" name="mMenuSelect">
      <property name="title">
@@ -417,19 +421,18 @@
    </widget>
    <widget class="QMenu" name="mMeshMenu">
     <property name="title">
-     <string>&amp;Mesh</string>
+     <string>&amp;模型</string>
     </property>
     <addaction name="mActionShowMeshCalculator"/>
    </widget>
    <addaction name="mProjectMenu"/>
-   <addaction name="mEditMenu"/>
    <addaction name="mViewMenu"/>
    <addaction name="mLayerMenu"/>
-   <addaction name="mSettingsMenu"/>
-   <addaction name="mPluginMenu"/>
-   <addaction name="mVectorMenu"/>
    <addaction name="mRasterMenu"/>
+   <addaction name="mVectorMenu"/>
    <addaction name="mMeshMenu"/>
+   <addaction name="mPluginMenu"/>
+   <addaction name="mSettingsMenu"/>
    <addaction name="mHelpMenu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
@@ -551,6 +554,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="mActionPan"/>
+   <addaction name="mActionChangeDimension"/>
    <addaction name="mActionPanToSelected"/>
    <addaction name="mActionZoomIn"/>
    <addaction name="mActionZoomOut"/>
@@ -3459,6 +3463,15 @@ Shows placeholders for labels which could not be placed, e.g. due to overlaps wi
    </property>
    <property name="text">
     <string>Add Point Cloud Layer...</string>
+   </property>
+  </action>
+  <action name="mActionChangeDimension">
+   <property name="icon">
+    <iconset resource="../../images/images.qrc">
+     <normaloff>:/images/icons/qgis_icon.svg</normaloff>:/images/icons/qgis_icon.svg</iconset>
+   </property>
+   <property name="text">
+    <string>切换视图</string>
    </property>
   </action>
  </widget>

@@ -145,7 +145,7 @@ if(WITH_CORE)
 
   set (WITH_DESKTOP TRUE CACHE BOOL "Determines whether QGIS desktop should be built")
 
-  set (WITH_3D FALSE CACHE BOOL "Determines whether QGIS 3D library should be built")
+  set (WITH_3D TRUE CACHE BOOL "Determines whether QGIS 3D library should be built")
 
   set (WITH_QUICK FALSE CACHE BOOL "Determines whether QGIS Quick library should be built")
 
@@ -160,7 +160,7 @@ if(WITH_CORE)
     # QGIS bindings to package search path
     set (BINDINGS_GLOBAL_INSTALL FALSE CACHE BOOL "Install bindings to global python directory? (might need root)")
     set (SIP_GLOBAL_INSTALL FALSE CACHE BOOL "Install sip source files to system sip directory? (might need root)")
-    set (WITH_STAGED_PLUGINS TRUE CACHE BOOL "Stage-install core Python plugins to run from build directory? (utilities and console are always staged)")
+    set (WITH_STAGED_PLUGINS FALSE CACHE BOOL "Stage-install core Python plugins to run from build directory? (utilities and console are always staged)")
     set (WITH_PY_COMPILE FALSE CACHE BOOL "Determines whether Python modules in staged or installed locations are byte-compiled")
     # concatenate QScintilla2 API files
     if (WITH_GUI)
@@ -170,7 +170,6 @@ if(WITH_CORE)
     endif()
     add_definitions(-DWITH_BINDINGS)
   endif()
-
   # server disabled default because it needs FastCGI (which is optional dependency)
   set (WITH_SERVER FALSE CACHE BOOL "Determines whether QGIS server should be built")
   if(WITH_SERVER)
@@ -241,6 +240,7 @@ if(WITH_CORE)
     set(ORACLE_LIBDIR "" CACHE STRING "Path to OCI libraries")
   endif()
 
+<<<<<<< HEAD
   set (WITH_HANA FALSE CACHE BOOL "Determines whether SAP HANA Spatial support should be built")
   if(WITH_HANA)
     find_package(ODBC)
@@ -254,8 +254,17 @@ if(WITH_CORE)
   endif(WITH_HANA)
 
   set (WITH_PDAL FALSE CACHE BOOL "Determines whether PDAL support should be built")
+=======
+  set (WITH_PDAL TRUE CACHE BOOL "Determines whether PDAL support should be built")
+>>>>>>> 8d6357eb213466b34fef120c6a88f6b1aea127d3
   if(WITH_PDAL)
     set(HAVE_PDAL TRUE)
+  endif()
+
+  set (WITH_COLMAP TRUE CACHE BOOL "Determines whether ColMap support should be built")
+  if(WITH_COLMAP)
+     #add_subdirectory(external/colmap)
+     set(HAVE_COLMAP TRUE)
   endif()
 
   set (WITH_EPT TRUE CACHE BOOL "Determines whether Entwine Point Cloud (EPT) support should be built")
@@ -400,7 +409,7 @@ if(WITH_CORE)
     set (HAVE_POSTGRESQL TRUE)
   endif()
 
-  set (WITH_QTWEBKIT TRUE CACHE BOOL "Enable QtWebkit support")
+  set (WITH_QTWEBKIT FALSE CACHE BOOL "Enable QtWebkit support")
   if (WITH_QTWEBKIT)
     add_definitions(-DWITH_QTWEBKIT)
     message(STATUS "Qt WebKit support enabled")
@@ -429,7 +438,7 @@ if(WITH_CORE)
   if (PDAL_FOUND)
     set(HAVE_PDAL TRUE)  # used in qgsconfig.h
   endif()
-
+  
   #############################################################
   # search for Qt5
   set(QT_MIN_VERSION 5.12.0)
@@ -442,7 +451,7 @@ if(WITH_CORE)
       set (HAVE_QT5SERIALPORT TRUE)
   endif()
 
-  find_package(Qt5 COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test UiTools Sql REQUIRED)
+  find_package(Qt5 COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test UiTools Sql OpenGL REQUIRED)
   if (NOT IOS)
     find_package(Qt5 COMPONENTS PrintSupport REQUIRED)
   else()
@@ -677,6 +686,8 @@ add_definitions(-DQT_DISABLE_DEPRECATED_BEFORE=0x050800)
 
 # For fast string concatenation
 add_definitions(-DQT_USE_QSTRINGBUILDER)
+
+add_definitions(-DWIN32_LEAN_AND_MEAN)
 
 if (WITH_GEOREFERENCER)
   find_package(GSL REQUIRED)

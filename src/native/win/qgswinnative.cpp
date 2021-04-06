@@ -31,7 +31,7 @@
 #include "wintoastlib.h"
 #include <Dbt.h>
 #include <memory>
-
+#include <shellapi.h>
 
 struct ITEMIDLISTDeleter
 {
