@@ -5,9 +5,10 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDI
 # providers with implemented both static and dynamic building
 add_subdirectory(wms)
 if (POSTGRES_FOUND)
-  add_subdirectory(postgres)
+  #add_subdirectory(postgres)
 endif()
 
+<<<<<<< HEAD
 if (NOT FORCE_STATIC_LIBS)
   add_subdirectory(arcgisrest)
   add_subdirectory(delimitedtext)
@@ -17,6 +18,21 @@ if (NOT FORCE_STATIC_LIBS)
   add_subdirectory(gpx)
   add_subdirectory(db2)
   add_subdirectory(mdal)
+=======
+if (NOT FORCE_STATIC_PROVIDERS)
+  #add_subdirectory(arcgisrest)
+  #add_subdirectory(delimitedtext)
+  #add_subdirectory(geonode)
+  #add_subdirectory(mssql)
+  #add_subdirectory(ows)
+  #add_subdirectory(wcs)
+  #add_subdirectory(gpx)
+  #add_subdirectory(wfs)
+  #add_subdirectory(spatialite)
+ # add_subdirectory(virtual)
+  #add_subdirectory(db2)
+ # add_subdirectory(mdal)
+>>>>>>> 4df3fc0ad4210fdbd20c76e2d5a7fa08cfa041e0
 
   if (WITH_SPATIALITE)
     add_subdirectory(spatialite)
@@ -25,7 +41,7 @@ if (NOT FORCE_STATIC_LIBS)
   endif()
 
   if (WITH_ORACLE)
-    add_subdirectory(oracle)
+    #add_subdirectory(oracle)
   endif()
 
   if (WITH_HANA)
@@ -37,6 +53,6 @@ if (NOT FORCE_STATIC_LIBS)
   endif()
 
   if (WITH_GRASS OR WITH_GRASS7)
-    add_subdirectory(grass)
+  #  add_subdirectory(grass)
   endif()
 endif()

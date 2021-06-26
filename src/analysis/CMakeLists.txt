@@ -223,6 +223,8 @@ set(QGIS_ANALYSIS_SRCS
 
   processing/qgsalgorithmnetworkanalysisbase.cpp
 
+  processing/qgsalgorithmsbetpointcloud.cpp
+  processing/RieglReaderWithGeoCorrect.cpp
   processing/qgsnativealgorithms.cpp
   processing/qgsoverlayutils.cpp
   processing/qgsrasteranalysisutils.cpp
