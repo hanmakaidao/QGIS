@@ -3,8 +3,6 @@ if(NOT WIN32)
 SUBDIRS(${CMAKE_SOURCE_DIR}/external/qt-unix-signals)
 endif()
 
-add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
-
 set(QGIS_APP_SRCS
   ${CMAKE_SOURCE_DIR}/external/nmea/gmath.c
   ${CMAKE_SOURCE_DIR}/external/nmea/time.c
@@ -122,33 +120,6 @@ set(QGIS_APP_SRCS
   decorations/qgsdecorationscalebardialog.cpp
   decorations/qgsdecorationgrid.cpp
   decorations/qgsdecorationgriddialog.cpp
-  colmapui/automatic_reconstruction_widget.cc
-  colmapui/bundle_adjustment_widget.cc
-  colmapui/colormaps.cc
-  colmapui/database_management_widget.cc
-  colmapui/dense_reconstruction_widget.cc
-  colmapui/feature_extraction_widget.cc
-  colmapui/feature_matching_widget.cc
-  colmapui/image_viewer_widget.cc
-  colmapui/license_widget.cc
-  colmapui/line_painter.cc
-  colmapui/log_widget.cc
-  colmapui/match_matrix_widget.cc
-  colmapui/model_viewer_widget.cc
-  colmapui/movie_grabber_widget.cc
-  colmapui/options_widget.cc
-  colmapui/point_painter.cc
-  colmapui/point_viewer_widget.cc
-  colmapui/project_widget.cc
-  colmapui/qt_utils.cc
-  colmapui/reconstruction_manager_widget.cc
-  colmapui/reconstruction_options_widget.cc
-  colmapui/reconstruction_stats_widget.cc
-  colmapui/render_options_widget.cc
-  colmapui/thread_control_widget.cc
-  colmapui/triangle_painter.cc
-  colmapui/undistortion_widget.cc
-  colmapui/resources.qrc
 
   pointcloud/qgspointcloudelevationpropertieswidget.cpp
   pointcloud/qgspointcloudlayerproperties.cpp
@@ -444,166 +415,6 @@ set_source_files_properties(
   PROPERTIES COMPILE_FLAGS -wd4091)
 endif()
 
-<<<<<<< HEAD
-=======
-include_directories(
-  ${CMAKE_SOURCE_DIR}/external/libdxfrw
-  ${CMAKE_SOURCE_DIR}/external/nmea
-  ${CMAKE_SOURCE_DIR}/external
-
-  ${CMAKE_SOURCE_DIR}/src/app
-  ${CMAKE_SOURCE_DIR}/src/app/decorations
-  ${CMAKE_SOURCE_DIR}/src/app/devtools/networklogger
-  ${CMAKE_SOURCE_DIR}/src/app/labeling
-  ${CMAKE_SOURCE_DIR}/src/app/layout
-  ${CMAKE_SOURCE_DIR}/src/app/pluginmanager
-  ${CMAKE_SOURCE_DIR}/src/app/gps
-  ${CMAKE_SOURCE_DIR}/src/app/dwg
-  ${CMAKE_SOURCE_DIR}/src/app/mesh
-  ${CMAKE_SOURCE_DIR}/src/app/locator
-  ${CMAKE_SOURCE_DIR}/src/app/pointcloud
-  ${CMAKE_SOURCE_DIR}/src/app/vectortile
-  ${CMAKE_SOURCE_DIR}/src/analysis
-  ${CMAKE_SOURCE_DIR}/src/analysis/raster
-  ${CMAKE_SOURCE_DIR}/src/analysis/mesh
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/annotations
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/gps
-  ${CMAKE_SOURCE_DIR}/src/core/dxf
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/mesh
-  ${CMAKE_SOURCE_DIR}/src/core/pointcloud
-  ${CMAKE_SOURCE_DIR}/src/core/numericformats
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/layertree
-  ${CMAKE_SOURCE_DIR}/src/core/locator
-  ${CMAKE_SOURCE_DIR}/src/core/numericformats
-  ${CMAKE_SOURCE_DIR}/src/core/pal
-  ${CMAKE_SOURCE_DIR}/src/core/providers/memory
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/scalebar
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/validity
-  ${CMAKE_SOURCE_DIR}/src/core/vectortile
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/attributeformconfig
-  ${CMAKE_SOURCE_DIR}/src/gui/symbology
-  ${CMAKE_SOURCE_DIR}/src/gui/attributetable
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/src/gui/codeeditors
-  ${CMAKE_SOURCE_DIR}/src/gui/devtools
-  ${CMAKE_SOURCE_DIR}/src/gui/labeling
-  ${CMAKE_SOURCE_DIR}/src/gui/mesh
-  ${CMAKE_SOURCE_DIR}/src/gui/numericformats
-  ${CMAKE_SOURCE_DIR}/src/gui/ogr
-  ${CMAKE_SOURCE_DIR}/src/gui/numericformats
-  ${CMAKE_SOURCE_DIR}/src/gui/processing
-  ${CMAKE_SOURCE_DIR}/src/gui/pointcloud
-  ${CMAKE_SOURCE_DIR}/src/gui/raster
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets/core
-  ${CMAKE_SOURCE_DIR}/src/gui/layertree
-  ${CMAKE_SOURCE_DIR}/src/gui/locator
-  ${CMAKE_SOURCE_DIR}/src/gui/vector
-  ${CMAKE_SOURCE_DIR}/src/gui/vectortile
-  ${CMAKE_SOURCE_DIR}/src/plugins
-  ${CMAKE_SOURCE_DIR}/src/python
-  ${CMAKE_SOURCE_DIR}/src/native
-
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
-  ${CMAKE_BINARY_DIR}/src/python
-  ${CMAKE_BINARY_DIR}/src/analysis
-  ${CMAKE_BINARY_DIR}/src/app
-  ${CMAKE_BINARY_DIR}/src/ui
-  ${CMAKE_BINARY_DIR}/src/native
-)
-
-if (WITH_3D)
-  include_directories(
-    ${CMAKE_SOURCE_DIR}/src/app/3d
-    ${CMAKE_SOURCE_DIR}/src/core/3d
-    ${CMAKE_SOURCE_DIR}/src/3d
-    ${CMAKE_SOURCE_DIR}/src/3d/materials
-    ${CMAKE_SOURCE_DIR}/src/3d/mesh
-    ${CMAKE_SOURCE_DIR}/src/3d/symbols
-    ${CMAKE_SOURCE_DIR}/src/3d/terrain
-    ${CMAKE_SOURCE_DIR}/src/3d/chunks
-    ${CMAKE_BINARY_DIR}/src/3d
-  )
-  include_directories(SYSTEM
-    ${QT5_3DEXTRA_INCLUDE_DIR}
-  )
-endif()
-
-include_directories(SYSTEM
-  ${QWT_INCLUDE_DIR}
-  ${QT_QTUITOOLS_INCLUDE_DIR}
-  ${QSCINTILLA_INCLUDE_DIR}
-  ${CMAKE_SOURCE_DIR}/external/qt-unix-signals
-)
-include_directories(
-  ../analysis/processing
-  ../analysis/raster
-  ../analysis/vector/geometry_checker
-  ../core
-  ../core/annotations
-  ../core/auth
-  ../core/gps
-  ../core/dxf
-  ../core/geometry
-  ../core/geocms/geonode
-  ../core/layout
-  ../core/metadata
-  ../core/layertree
-  ../core/processing
-  ../core/providers/memory
-  ../core/raster
-  ../core/mesh
-  ../core/scalebar
-  ../core/symbology
-  ../core/textrenderer
-  ../gui
-  ../gui/symbology
-  ../gui/attributetable
-  ../gui/auth
-  ../gui/effects
-  ../gui/ogr
-  ../gui/raster
-  ../gui/editorwidgets
-  ../gui/editorwidgets/core
-  ../gui/layertree
-  ../gui/layout
-  ../gui/tableeditor
-  ../plugins
-  ../python
-  colmapui
-  gps
-  dwg
-  ${CMAKE_SOURCE_DIR}/external/libdxfrw
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-  ${CMAKE_SOURCE_DIR}/src/native
-
-  ${CMAKE_BINARY_DIR}/src/native
-)
-include_directories(SYSTEM
-  ${PROJ_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR}
-  ${SPATIALITE_INCLUDE_DIR}
-  ${SQLITE3_INCLUDE_DIR}
-  ${GEOS_INCLUDE_DIR}
-  ${QWTPOLAR_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-  ${QTKEYCHAIN_INCLUDE_DIR}
-)
-
-
->>>>>>> 8d6357eb213466b34fef120c6a88f6b1aea127d3
 if(HAVE_OPENCL)
     include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
 endif()
@@ -614,23 +425,6 @@ if (HAVE_PDAL)
     add_definitions(-DWIN32_LEAN_AND_MEAN)
   endif()
 endif()
-
-if (HAVE_COLMAP)
-  include_directories(
-    ${Boost_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIRS}
-    ${GLOG_INCLUDE_DIRS}
-    ${FREEIMAGE_INCLUDE_DIRS}
-    ${CERES_INCLUDE_DIRS}
-    ${GLEW_INCLUDE_DIRS}
-    ${Qt5Core_INCLUDE_DIRS}
-    ${Qt5OpenGL_INCLUDE_DIRS}
-    ${Qt5Widgets_INCLUDE_DIRS}
-    ${ColMap_INCLUDE_DIR}
-    ${ColMap_INCLUDE_DIR}/lib
-  )
-endif()
-
 
 if(ENABLE_MODELTEST)
   include_directories(../../tests/qt_modeltest)
@@ -719,32 +513,6 @@ target_link_libraries(qgis_app
   qgis_analysis
   qgis_native
   libdxfrw
-  colmap
-  colmap_cuda
-  flann
-  graclus
-  lsd
-  pba
-  poisson_recon
-  sift_gpu
-  vlfeat
-  ${Boost_LIBRARY_DIRS}
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  ${GLOG_LIBRARIES}
-  ${FREEIMAGE_LIBRARIES}
-  ${CERES_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  ${COLMAP_CPP_LIBRARY}
-  ${COLMAP_CUDA_LIBRARY}
-  ${COLMAP_Flann_LIBRARY}
-  ${COLMAP_graclus_LIBRARY}
-  ${COLMAP_lsd_LIBRARY}
-  ${COLMAP_pba_LIBRARY}
-  ${COLMAP_poisson_LIBRARY}
-  ${COLMAP_siftgpu_LIBRARY}
-  ${COLMAP_vlfeat_LIBRARY}
 )
 
 target_compile_definitions(qgis_app PRIVATE "-DQT_NO_FOREACH")
@@ -841,30 +609,6 @@ endif()
 if (HAVE_PDAL)
   target_link_libraries(qgis_app ${PDAL_LIBRARIES})
 endif()
-
-if (HAVE_COLMAP)
-   target_link_libraries(qgis_app
-     ${Boost_LIBRARY_DIRS}
-     ${Boost_FILESYSTEM_LIBRARY}
-     ${Boost_PROGRAM_OPTIONS_LIBRARY}
-     ${Boost_SYSTEM_LIBRARY}
-     ${GLOG_LIBRARIES}
-     ${FREEIMAGE_LIBRARIES}
-     ${CERES_LIBRARIES}
-     ${OPENGL_LIBRARIES}
-     ${COLMAP_CPP_LIBRARY}
-     ${COLMAP_CUDA_LIBRARY}
-     ${COLMAP_Flann_LIBRARY}
-     ${COLMAP_graclus_LIBRARY}
-     ${COLMAP_lsd_LIBRARY}
-     ${COLMAP_pba_LIBRARY}
-     ${COLMAP_poisson_LIBRARY}
-     ${COLMAP_siftgpu_LIBRARY}
-     ${COLMAP_vlfeat_LIBRARY}
-  )
-endif()
-
-link_directories( ${Boost_LIBRARY_DIRS})
 
 if(MSVC)
   install(FILES qgis.ico qgis-mime.ico qgis-qgs.ico qgis-qlr.ico qgis-qml.ico qgis-qpt.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)

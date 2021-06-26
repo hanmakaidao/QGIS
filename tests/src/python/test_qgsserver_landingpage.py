@@ -13,7 +13,7 @@ __author__ = 'Alessandro Pasotti'
 __date__ = '03/08/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
-__revision__ = 'ceb53cefa430be672028f888a7d0d97d69c62728'
+__revision__ = '$Format:%H$'
 
 import os
 import json
