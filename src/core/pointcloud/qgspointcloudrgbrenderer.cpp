@@ -174,8 +174,6 @@ void QgsPointCloudRgbRenderer::renderDisplaz(DrawCount mdrawlist, std::shared_pt
 	const bool useBlueContrastEnhancement = mBlueContrastEnhancement && mBlueContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;
 	const bool useGreenContrastEnhancement = mGreenContrastEnhancement && mGreenContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;
 
-	const QgsDoubleRange zRange = context.renderContext().zRange();
-	const bool considerZ = !zRange.isInfinite();
 
 	int rendered = 0;
 	double x = 0;
@@ -185,6 +183,7 @@ void QgsPointCloudRgbRenderer::renderDisplaz(DrawCount mdrawlist, std::shared_pt
 	const bool reproject = ct.isValid();
 	V3f* m_P;
 	const uint16_t * color;
+  bool has_color = false;
 	const std::vector<PointCloudGeomField>* m_pointarrayfields = m_geom->GetFiled();
 	for (size_t i = 0; i < m_pointarrayfields->size(); ++i)
 	{
@@ -198,12 +197,13 @@ void QgsPointCloudRgbRenderer::renderDisplaz(DrawCount mdrawlist, std::shared_pt
 		{
 			//uint16_t* bufferData = field.data.get();
 			color = field.as<uint16_t>();
+      has_color = true;
 		}
 	}
 	V3d Vertex;
-	uint16_t red;
-	uint16_t green;
-	uint16_t blue;
+	uint16_t red =0;
+	uint16_t green =0;
+	uint16_t blue =0;
 	while (mdrawlist.index.size() > decimal_step && mdrawlist.numVertices>1)
 	{
 		std::list<size_t>::iterator it = mdrawlist.index.begin();
@@ -215,10 +215,25 @@ void QgsPointCloudRgbRenderer::renderDisplaz(DrawCount mdrawlist, std::shared_pt
       } 
 			//V3f Vertex = V3f(m_P[*it]) + m_geom->offset();+
 
+      if (has_color)
+      {
+        red = uint(color[(*it) * 3]) / 256;
+        if (red >= 255)
+        {
+          red = 1;
+        }
+        green = uint(color[(*it) * 3 + 1]) / 256;
+        if (green >= 255)
+        {
+          green = 1;
+        }
+        blue = uint(color[(*it) * 3 + 2]) / 256;
+        if (blue >= 255)
+        {
+          blue = 1;
+        }
+      }
 
-			 red = color[(*it) * 3] / 100;
-			 green = color[(*it) * 3 + 1] / 100;
-			blue = color[(*it) * 3 + 2] / 100;
 			drawPoint(Vertex.x, Vertex.y, QColor(red, green, blue), context);
 		}
 		catch (const std::exception& e)

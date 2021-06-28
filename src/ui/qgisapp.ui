@@ -434,6 +434,8 @@
    <addaction name="actionmAction_X"/>
    <addaction name="actionmAction_Y"/>
    <addaction name="actionmAction_Z"/>
+   <addaction name="separator"/>
+   <addaction name="showshaderparameter"/>
   </widget>
   <widget class="QToolBar" name="mWebToolBar">
    <property name="windowTitle">
@@ -468,7 +470,6 @@
    <addaction name="mActionSinglePointPen"/>
    <addaction name="settargetclass"/>
    <addaction name="setbeforclass"/>
-   <addaction name="showshaderparameter"/>
   </widget>
   <widget class="QToolBar" name="m_DianLIToolBar">
    <property name="windowTitle">
@@ -3593,6 +3594,12 @@ Shows placeholders for labels which could not be placed, e.g. due to overlaps wi
    </property>
   </action>
   <action name="showshaderparameter">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="../../images/images.qrc">
      <normaloff>:/images/cc/ccGear.png</normaloff>:/images/cc/ccGear.png</iconset>
