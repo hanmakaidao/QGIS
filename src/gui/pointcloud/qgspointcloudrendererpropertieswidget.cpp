@@ -256,3 +256,201 @@ void QgsPointCloudRendererPropertiesWidget::emitWidgetChanged()
     emit widgetChanged();
 }
 
+
+
+//----------------------------------------3d render-------------------------------------------------------------------------------------------------------------//
+
+
+QgsPointCloud3DRendererPropertiesWidget::QgsPointCloud3DRendererPropertiesWidget(QgsPointCloudLayer *layer, QgsStyle *style, QWidget *parent)
+  : QgsMapLayerConfigWidget(layer, nullptr, parent)
+  , mLayer(layer)
+  , mStyle(style)
+{
+  setupUi(this);
+
+  layout()->setContentsMargins(0, 0, 0, 0);
+
+  // initialize registry's widget functions
+  /*
+  _initRendererWidgetFunctions();
+
+  QgsPointCloudRendererRegistry *reg = QgsApplication::pointCloudRendererRegistry();
+  const QStringList renderers = reg->renderersList();
+  for (const QString &name : renderers)
+  {
+    if (QgsPointCloudRendererAbstractMetadata *m = reg->rendererMetadata(name))
+      cboRenderers->addItem(m->icon(), m->visibleName(), name);
+  }*/
+
+  cboRenderers->setCurrentIndex(-1); // set no current renderer
+
+  mPointStyleComboBox->addItem(tr("Square"), QgsPointCloudRenderer::Square);
+  mPointStyleComboBox->addItem(tr("Circle"), QgsPointCloudRenderer::Circle);
+
+  connect(cboRenderers, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &QgsPointCloud3DRendererPropertiesWidget::rendererChanged);
+
+  connect(mBlendModeComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+  connect(mOpacityWidget, &QgsOpacityWidget::opacityChanged, this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+
+  mPointSizeUnitWidget->setUnits(QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMetersInMapUnits << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
+    << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches);
+
+  connect(mPointSizeSpinBox, qgis::overload<double>::of(&QgsDoubleSpinBox::valueChanged), this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+  connect(mPointSizeUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+
+  mMaxErrorUnitWidget->setUnits(QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMetersInMapUnits << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
+    << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches);
+  mMaxErrorSpinBox->setClearValue(0.3);
+
+  connect(mMaxErrorSpinBox, qgis::overload<double>::of(&QgsDoubleSpinBox::valueChanged), this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+  connect(mMaxErrorUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+
+  connect(mPointStyleComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
+
+  syncToLayer(layer);
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::setContext(const QgsSymbolWidgetContext &context)
+{
+  mMapCanvas = context.mapCanvas();
+  mMessageBar = context.messageBar();
+  if (mActiveWidget)
+  {
+    mActiveWidget->setContext(context);
+  }
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::syncToLayer(QgsMapLayer *layer)
+{
+  mLayer = qobject_cast<QgsPointCloudLayer *>(layer);
+
+  mBlockChangedSignal = true;
+  mOpacityWidget->setOpacity(mLayer->opacity());
+  mBlendModeComboBox->setBlendMode(mLayer->blendMode());
+
+  if (mLayer->renderer())
+  {
+    // set current renderer from layer
+    QString rendererName = mLayer->renderer()->type();
+
+    int rendererIdx = cboRenderers->findData(rendererName);
+    cboRenderers->setCurrentIndex(rendererIdx);
+
+    // no renderer found... this mustn't happen
+    Q_ASSERT(rendererIdx != -1 && "there must be a renderer!");
+
+    mPointSizeSpinBox->setValue(mLayer->renderer()->pointSize());
+    mPointSizeUnitWidget->setUnit(mLayer->renderer()->pointSizeUnit());
+    mPointSizeUnitWidget->setMapUnitScale(mLayer->renderer()->pointSizeMapUnitScale());
+
+    mPointStyleComboBox->setCurrentIndex(mPointStyleComboBox->findData(mLayer->renderer()->pointSymbol()));
+
+    mMaxErrorSpinBox->setValue(mLayer->renderer()->maximumScreenError());
+    mMaxErrorUnitWidget->setUnit(mLayer->renderer()->maximumScreenErrorUnit());
+  }
+
+  mBlockChangedSignal = false;
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::setDockMode(bool dockMode)
+{
+  if (mActiveWidget)
+    mActiveWidget->setDockMode(dockMode);
+  QgsMapLayerConfigWidget::setDockMode(dockMode);
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::apply()
+{
+  mLayer->setOpacity(mOpacityWidget->opacity());
+  mLayer->setBlendMode(mBlendModeComboBox->blendMode());
+
+  if (mActiveWidget)
+    mLayer->setRenderer(mActiveWidget->renderer());
+  else if (!cboRenderers->currentData().toString().isEmpty())
+  {
+    QDomElement elem;
+    mLayer->setRenderer(QgsApplication::pointCloudRendererRegistry()->rendererMetadata(cboRenderers->currentData().toString())->createRenderer(elem, QgsReadWriteContext()));
+  }
+
+  mLayer->renderer()->setPointSize(mPointSizeSpinBox->value());
+  mLayer->renderer()->setPointSizeUnit(mPointSizeUnitWidget->unit());
+  mLayer->renderer()->setPointSizeMapUnitScale(mPointSizeUnitWidget->getMapUnitScale());
+
+  mLayer->renderer()->setPointSymbol(static_cast<QgsPointCloudRenderer::PointSymbol>(mPointStyleComboBox->currentData().toInt()));
+
+  mLayer->renderer()->setMaximumScreenError(mMaxErrorSpinBox->value());
+  mLayer->renderer()->setMaximumScreenErrorUnit(mMaxErrorUnitWidget->unit());
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::rendererChanged()
+{
+  if (cboRenderers->currentIndex() == -1)
+  {
+    QgsDebugMsg(QStringLiteral("No current item -- this should never happen!"));
+    return;
+  }
+
+  QString rendererName = cboRenderers->currentData().toString();
+
+  //Retrieve the previous renderer: from the old active widget if possible, otherwise from the layer
+  std::unique_ptr< QgsPointCloudRenderer > oldRenderer;
+  std::unique_ptr< QgsPointCloudRenderer > newRenderer;
+  if (mActiveWidget)
+    newRenderer.reset(mActiveWidget->renderer());
+
+  if (newRenderer)
+  {
+    oldRenderer = std::move(newRenderer);
+  }
+  else
+  {
+    oldRenderer.reset(mLayer->renderer()->clone());
+  }
+
+  // get rid of old active widget (if any)
+  if (mActiveWidget)
+  {
+    stackedWidget->removeWidget(mActiveWidget);
+
+    delete mActiveWidget;
+    mActiveWidget = nullptr;
+  }
+
+  QgsPointCloudRendererWidget *widget = nullptr;
+  QgsPointCloudRendererAbstractMetadata *rendererMetadata = QgsApplication::pointCloudRendererRegistry()->rendererMetadata(rendererName);
+  if (rendererMetadata)
+    widget = rendererMetadata->createRendererWidget(mLayer, mStyle, oldRenderer.get());
+  oldRenderer.reset();
+
+  if (widget)
+  {
+    // instantiate the widget and set as active
+    mActiveWidget = widget;
+    stackedWidget->addWidget(mActiveWidget);
+    stackedWidget->setCurrentWidget(mActiveWidget);
+
+    if (mMapCanvas || mMessageBar)
+    {
+      QgsSymbolWidgetContext context;
+      context.setMapCanvas(mMapCanvas);
+      context.setMessageBar(mMessageBar);
+      mActiveWidget->setContext(context);
+    }
+
+    connect(mActiveWidget, &QgsPanelWidget::widgetChanged, this, &QgsPointCloud3DRendererPropertiesWidget::widgetChanged);
+    connect(mActiveWidget, &QgsPanelWidget::showPanel, this, &QgsPointCloud3DRendererPropertiesWidget::openPanel);
+    widget->setDockMode(dockMode());
+  }
+  else
+  {
+    // set default "no edit widget available" page
+    stackedWidget->setCurrentWidget(pageNoWidget);
+  }
+  emitWidgetChanged();
+}
+
+void QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged()
+{
+  if (!mBlockChangedSignal)
+    emit widgetChanged();
+}

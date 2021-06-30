@@ -20,6 +20,7 @@
 #include "qgis_gui.h"
 
 #include "ui_qgspointcloudrendererpropsdialogbase.h"
+#include "ui_qgspointcloud3drendererpropsdialogbase.h"
 #include "qgsmaplayerconfigwidget.h"
 
 class QgsPointCloudLayer;
@@ -78,5 +79,48 @@ class GUI_EXPORT QgsPointCloudRendererPropertiesWidget : public QgsMapLayerConfi
 
 };
 
+
+class GUI_EXPORT QgsPointCloud3DRendererPropertiesWidget : public QgsMapLayerConfigWidget, private Ui::QgsPointCloud3DRendererPropsDialogBase
+{
+  Q_OBJECT
+
+public:
+
+  /**
+   * Constructor for QgsPointCloudRendererPropertiesWidget, associated with the specified \a layer and \a style database.
+   */
+  QgsPointCloud3DRendererPropertiesWidget(QgsPointCloudLayer *layer, QgsStyle *style, QWidget *parent SIP_TRANSFERTHIS = nullptr);
+
+  /**
+   * Sets the \a context in which the widget is shown, e.g., the associated map canvas and expression contexts.
+   */
+  void setContext(const QgsSymbolWidgetContext &context);
+
+  void syncToLayer(QgsMapLayer *layer) override;
+  void setDockMode(bool dockMode) override;
+
+public slots:
+
+  void apply() override;
+
+private slots:
+
+  void rendererChanged();
+
+  void emitWidgetChanged();
+
+private:
+
+  QgsPointCloudLayer *mLayer = nullptr;
+  QgsStyle *mStyle = nullptr;
+
+  QgsPointCloudRendererWidget *mActiveWidget = nullptr;
+
+  QgsMapCanvas *mMapCanvas = nullptr;
+  QgsMessageBar *mMessageBar = nullptr;
+
+  bool mBlockChangedSignal = false;
+
+};
 
 #endif // QGSPOINTCLOUDRENDERERPROPERTIESWIDGET_H

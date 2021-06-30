@@ -73,7 +73,7 @@ QgsMapLayerConfigWidget *QgsPointCloudLayer3DRendererWidgetFactory::createWidget
     widget->setRenderer(dynamic_cast<QgsPointCloudLayer3DRenderer *>(pointCloudLayer->renderer3D()));
   return widget;
   */
-  return new QgsPointCloudRendererPropertiesWidget(qobject_cast<QgsPointCloudLayer *>(layer), QgsStyle::defaultStyle(), parent);
+  return new QgsPointCloud3DRendererPropertiesWidget(qobject_cast<QgsPointCloudLayer *>(layer), QgsStyle::defaultStyle(), parent);
 }
 
 bool QgsPointCloudLayer3DRendererWidgetFactory::supportLayerPropertiesDialog() const
