@@ -1397,6 +1397,8 @@ QgisApp::QgisApp(QSplashScreen *splash, bool restorePlugins, bool skipVersionChe
 
   registerMapLayerPropertiesFactory(new QgsVectorLayerDigitizingPropertiesFactory(this));
   registerMapLayerPropertiesFactory(new QgsPointCloudRendererWidgetFactory(this));
+  registerMapLayerPropertiesFactory(new QgsPointCloudLayer3DRendererWidgetFactory(this)); // 用于3dviewer的shader 接口
+
 #ifdef HAVE_3D
   registerMapLayerPropertiesFactory(new QgsVectorLayer3DRendererWidgetFactory(this));
   registerMapLayerPropertiesFactory(new QgsMeshLayer3DRendererWidgetFactory(this));

@@ -33,5 +33,19 @@ class QgsPointCloudRendererWidgetFactory : public QObject, public QgsMapLayerCon
 };
 
 
+class QgsPointCloudLayer3DRendererWidgetFactory : public QObject, public QgsMapLayerConfigWidgetFactory
+{
+  Q_OBJECT
+public:
+  explicit QgsPointCloudLayer3DRendererWidgetFactory(QObject *parent = nullptr);
+
+  QgsMapLayerConfigWidget *createWidget(QgsMapLayer *layer, QgsMapCanvas *canvas, bool dockWidget, QWidget *parent) const override;
+  bool supportLayerPropertiesDialog() const override;
+  bool supportsLayer(QgsMapLayer *layer) const override;
+  QString layerPropertiesPagePositionHint() const override;
+  bool supportsStyleDock() const override;
+};
+
+
 
 #endif // QGSPOINTCLOUDLAYERSTYLEWIDGET_H
