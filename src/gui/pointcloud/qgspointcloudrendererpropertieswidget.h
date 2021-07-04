@@ -91,6 +91,11 @@ public:
    */
   QgsPointCloud3DRendererPropertiesWidget(QgsPointCloudLayer *layer, QgsStyle *style, QWidget *parent SIP_TRANSFERTHIS = nullptr);
 
+  void  setContentWidget(QWidget * parameters)
+  {
+
+  }
+
   /**
    * Sets the \a context in which the widget is shown, e.g., the associated map canvas and expression contexts.
    */
@@ -121,6 +126,7 @@ private:
 
   bool mBlockChangedSignal = false;
 
+ 
 };
 
 #endif // QGSPOINTCLOUDRENDERERPROPERTIESWIDGET_H

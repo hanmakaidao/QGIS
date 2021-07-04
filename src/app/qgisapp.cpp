@@ -16427,6 +16427,10 @@ void QgisApp::showLayerProperties(QgsMapLayer *mapLayer, const QString &page)
 
     for (QgsMapLayerConfigWidgetFactory *factory : qgis::as_const(mMapLayerPanelFactories))
     {
+      if (factory->title() == "3D View")
+      {
+
+      }
       pointCloudLayerPropertiesDialog.addPropertiesPageFactory(factory);
     }
 

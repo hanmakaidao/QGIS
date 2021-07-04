@@ -126,6 +126,8 @@ class GUI_EXPORT QgsMapLayerConfigWidgetFactory
      */
     virtual QgsMapLayerConfigWidget *createWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, bool dockWidget = true, QWidget *parent = nullptr ) const = 0 SIP_FACTORY;
 
+    virtual void setContentWidget(QWidget * parameters) {};
+
   private:
     QIcon mIcon;
     QString mTitle;
