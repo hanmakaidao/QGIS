@@ -127,12 +127,6 @@ void QgsPointCloudLayerProperties::addPropertiesPageFactory( QgsMapLayerConfigWi
   }
 
   QgsMapLayerConfigWidget *page = factory->createWidget( mLayer, mMapCanvas, false, this );
-  if (factory->title() == "3D View")
-  {
-    page->setContentWidget(factory->m_pointcloud_parameters);
-    factory->m_pointcloud_parameters->setVisible(1);
-  }
-
   mConfigWidgets << page;
 
   const QString beforePage = factory->layerPropertiesPagePositionHint();
