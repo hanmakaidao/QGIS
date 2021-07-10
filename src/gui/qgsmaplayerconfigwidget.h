@@ -58,6 +58,7 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
      * \since QGIS 3.14
      */
     virtual void syncToLayer( QgsMapLayer *layer ) { Q_UNUSED( layer ) }
+    virtual  void  setContentWidget(QWidget * parameters) {};
 
   public slots:
 
@@ -66,6 +67,9 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
      * Will be called when live update is enabled.
      */
     virtual void apply() = 0;
+
+
+
 
   protected:
     QgsMapLayer *mLayer = nullptr;

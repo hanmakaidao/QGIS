@@ -16429,7 +16429,13 @@ void QgisApp::showLayerProperties(QgsMapLayer *mapLayer, const QString &page)
     {
       if (factory->title() == "3D View")
       {
-
+        if (shaderParamsUI != nullptr)
+        {
+          shaderParamsUI = new QWidget(shaderParamsDock);
+          shaderParamsDock->setWidget(shaderParamsUI);
+          m_pointView->setShaderParamsUIWidget(shaderParamsUI);
+        }
+        factory->setContentWidget(shaderParamsUI);
       }
       pointCloudLayerPropertiesDialog.addPropertiesPageFactory(factory);
     }
@@ -17413,7 +17419,7 @@ void QgisApp::createLasViewer()
   // Shader parameters UI
   shaderParamsDock = new QgsDockWidget(tr("着色器"), this);
   shaderParamsDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-  QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
+  shaderParamsUI = new QWidget(shaderParamsDock);
   shaderParamsDock->setWidget(shaderParamsUI);
   m_pointView->setShaderParamsUIWidget(shaderParamsUI);
 

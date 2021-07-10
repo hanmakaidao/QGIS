@@ -91,9 +91,10 @@ public:
    */
   QgsPointCloud3DRendererPropertiesWidget(QgsPointCloudLayer *layer, QgsStyle *style, QWidget *parent SIP_TRANSFERTHIS = nullptr);
 
-  void  setContentWidget(QWidget * parameters)
+  void  setContentWidget(QWidget * parameters) override
   {
-
+    this->page->addWidget(parameters);
+   // parameters->show();
   }
 
   /**
