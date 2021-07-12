@@ -275,9 +275,9 @@ QgsPointCloud3DRendererPropertiesWidget::QgsPointCloud3DRendererPropertiesWidget
 
   layout()->setContentsMargins(0, 0, 0, 0);
 
-  this->banjing->setValue(m_banjing);
+  /*this->banjing->setValue(m_banjing);
  this->duibiSpinBox->setValue(m_duibi);
- this->zengyiSpinBox->setValue(m_znegyi);
+ this->zengyiSpinBox->setValue(m_znegyi);*/
 
   //connect(mPointSizeSpinBox, qgis::overload<double>::of(&QgsDoubleSpinBox::valueChanged), this, &QgsPointCloud3DRendererPropertiesWidget::emitWidgetChanged);
  // syncToLayer(layer);
@@ -301,9 +301,10 @@ void QgsPointCloud3DRendererPropertiesWidget::setDockMode(bool dockMode)
 
 void QgsPointCloud3DRendererPropertiesWidget::apply()
 {
+  /*
 m_banjing = this->banjing->value();
 m_duibi = this->duibiSpinBox->value();
- m_znegyi =  this->zengyiSpinBox->value();
+ m_znegyi =  this->zengyiSpinBox->value();*/
 
 }
 

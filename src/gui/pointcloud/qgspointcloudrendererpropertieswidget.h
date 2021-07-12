@@ -93,6 +93,11 @@ public:
 
   void  setContentWidget(QWidget * parameters)
   {
+   // this->page->addWidget(parameters);
+
+   // QWidget* widget = new QWidget(parameters);
+   // widget->setObjectName(QString::fromUtf8("widget"));
+    page->addWidget(parameters);
 
   }
 

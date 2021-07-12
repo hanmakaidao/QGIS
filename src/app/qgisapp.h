@@ -2437,6 +2437,7 @@ private:
   QgsDockWidget *logDock;
   QgsDockWidget *shaderEditorDock;
   QgsDockWidget *shaderParamsDock;
+  QWidget* shaderParamsUI;
   std::shared_ptr<QgsProfileWindowDockWidget> ProfileViewerDock = nullptr;
   std::shared_ptr<QgsDLWindowDockWidget> DianliXianModuleDock = nullptr;
   QgsClassSettingWindowDockWidget *ClasssettingDock;

@@ -59,6 +59,8 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
      */
     virtual void syncToLayer( QgsMapLayer *layer ) { Q_UNUSED( layer ) }
 
+    virtual  void  setContentWidget(QWidget * parameters) {};
+
   public slots:
 
     /**
